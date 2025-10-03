@@ -1,0 +1,21 @@
+@use "_reset.scss";
+@use "_mixins.scss";
+@use "_fonts.scss";
+@use "_colors.scss";
+@use "_media.scss";
+@use "_classes.scss";
+@use "_variables.scss";
+
+body {
+	color: var(--primary-color);
+	background-color: var(--bg-primary-color);
+	font-size: var(--font-size-base);
+	line-height: var(--font-line-base);
+	font: var(--font-family-sans);
+	font-weight: 400;
+	overflow-x: hidden;
+}
+
+.page {
+	overflow-x: hidden;
+}

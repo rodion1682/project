@@ -278,7 +278,6 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   height: 100%;
-  /* убрали background */
 }
 
 .glb-canvas {

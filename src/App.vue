@@ -12,7 +12,7 @@ import CookiesModal from './components/CookiesModal.vue'
 import ContactModal from './components/ContactModal.vue'
 import ProductModal from './components/ProductModal.vue'
 import OfferDetailsModal from './components/OfferDetailsModal.vue'
-import GeneratingModal from './components/GeneratingModal.vue'
+//import GeneratingModal from './components/GeneratingModal.vue'
 import ReadyModal from './components/ReadyModal.vue'
 import SaleSkinModal from './components/SaleSkinModal.vue'
 import ProductConfirmModal from './components/ProductConfirmModal.vue'
@@ -38,7 +38,7 @@ import { useProductModalStore } from '@/stores/productModal'
 import { useCartStore } from '@/stores/cart'
 import { useOfferDetailsModalStore } from '@/stores/offerDetailsModal'
 import { useReadyModalStore } from '@/stores/readyModal'
-import { useGeneratingModalStore } from '@/stores/generatingModal'
+//import { useGeneratingModalStore } from '@/stores/generatingModal'
 import { useRestoreModalStore } from '@/stores/restorePasswordModal.js'
 // import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
 
@@ -129,7 +129,7 @@ onMounted(() => {
     <HeaderView />
     <RouterView />
     <FooterView />
-    <Transition>
+    <!--<Transition>
       <LoginModal v-if="loginModalStore.isModalOpen" />
     </Transition>
     <Transition>
@@ -161,13 +161,15 @@ onMounted(() => {
     </Transition>
     <Transition>
       <ProductConfirmModal v-if="productModalStore.isConfirmModalOpen" />
-    </Transition>
+    </Transition>-->
+
     <!--    <Transition>-->
     <!--      <GeneratingModal v-if="true" />-->
     <!--    </Transition>-->
-    <Transition>
-      <ReadyModal v-if="readyModalStore.isModalOpen" />
-    </Transition>
+
+    <!-- uncomment ------------------- -->
+    <!--<Transition><ReadyModal v-if="readyModalStore.isModalOpen" /></Transition>-->
+
     <!-- <Transition>
       <ResetPasswordModal v-if="restoreModalStore.isModalOpen" />
     </Transition> -->

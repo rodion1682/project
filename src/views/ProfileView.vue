@@ -60,7 +60,7 @@ const { page } = toRefs(props)
           </div>
           <div class="balance-rate flex items-center justify-center">
             <div class="text text-18 text-inter">
-              <b>1 {{ currStore.currency.symbol }}</b>
+              <b>{{ currStore.currency.value }} {{ currStore.currency.symbol }}</b>
             </div>
             <div class="text text-18 text-inter">
               <b>=</b>

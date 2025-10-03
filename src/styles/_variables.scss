@@ -1,0 +1,27 @@
+:root {
+	$minWidth: 320;
+
+	//  border radiuses
+	--border-radius: 25.5px;
+	--border-radius-secondary: 4px;
+	--border-radius-third: 20px;
+
+	// animation scales
+	--downscale: 0.96;
+	--upscale: 1.04;
+
+	--blur-amount: 20px;
+
+	// z - indexes
+	--base-z-index: 1;
+	--secondary-z-index: 2;
+
+	--menu-z-index: 5;
+	--header-overlay-z-index: 6;
+	--header-z-index: 7;
+
+	--modal-z-index: 10;
+
+	// shadows
+	--header-bottom-shadow: 0 1px 20px -10px rgba(47, 47, 49, 0.2);
+}

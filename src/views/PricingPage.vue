@@ -15,6 +15,15 @@ const topUpStore = useTopUpStore()
 const topUpModalStore = useTopUpModalStore()
 const currStore = useCurrStore()
 const loginModalStore = useLoginModalStore()
+const settingsStore = useSettingsStore()
+
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation } from 'swiper/modules'
+import 'swiper/css/navigation'
+import 'swiper/css'
+import { useSettingsStore } from '@/stores/settings.js'
+import Decimal from 'decimal.js'
+import PriceSection from '@/components/widgets/PriceSection.vue'
 
 const customAmountSchema = yup.object({
   amount: yup
@@ -38,8 +47,13 @@ function onSubmitCustomAmount(values) {
 </script>
 
 <template>
-  <main class="main">
-    <section class="section pricing-section pricing-section-separate">
+  <main class="main _cnt">
+    <PriceSection
+      :top-up-store="topUpStore"
+      :on-submit-custom-amount="onSubmitCustomAmount"
+      :custom-amount-schema="customAmountSchema"
+    />
+    <!--<section class="section pricing-section pricing-section-separate">
       <div class="wrapper">
         <div class="text text-18 text-inter text-blue">{{ $t('Pricing') }}</div>
         <div class="text text-48 main-text-48">
@@ -49,14 +63,29 @@ function onSubmitCustomAmount(values) {
           {{ $t('SculptaDot uses credits') }}
         </div>
 
-        <div class="list flex items-start flex-wrap">
-          <CreditPackItem
-            v-for="(pack, i) in topUpStore.creditPacks"
-            :key="pack.id"
-            :pack="pack"
-            :equivalent="i !== 0"
-            :most-popular="i === 1"
-          />
+        <div class="list flex items-start">
+          <div class="swiper-list">
+            <Swiper
+              :modules="[Navigation]"
+              :navigation="{
+                nextEl: '.swiper-button-next',
+                prevEl: '.swiper-button-prev',
+              }"
+              :breakpoints="{
+                320: { slidesPerView: 1 }, // mobile
+                640: { slidesPerView: 2 }, // tablets
+                900: { slidesPerView: 3 }, // desktops
+              }"
+              :space-between="16"
+            >
+              <SwiperSlide v-for="(pack, i) in topUpStore.creditPacks" :key="pack.id">
+                <CreditPackItem :pack="pack" :equivalent="i !== 0" :most-popular="i === 2" />
+              </SwiperSlide>
+
+              <button class="swiper-button-prev"></button>
+              <button class="swiper-button-next"></button>
+            </Swiper>
+          </div>
 
           <Form
             v-slot="{ meta }"
@@ -72,7 +101,16 @@ function onSubmitCustomAmount(values) {
             </div>
             <div class="flex items-center justify-center">
               <div class="text text-18 text-inter">
-                <b>1 {{ currStore.currency.symbol }}</b>
+                <b>
+                  {{
+                    settingsStore.settings.points_conversion_rate
+                      ? new Decimal(1)
+                        .div(settingsStore.settings.points_conversion_rate)
+                        .toFixed(2)
+                      : '0.00'
+                  }}
+                  {{ currStore.currency.symbol }}
+                </b>
               </div>
               <div class="text text-18 text-inter">
                 <b>=</b>
@@ -96,10 +134,20 @@ function onSubmitCustomAmount(values) {
           </Form>
         </div>
       </div>
-    </section>
+    </section>-->
   </main>
 </template>
 
-<style scoped>
-/* Добавьте любые нужные стили, если необходимо */
+<style lang="scss" scoped>
+@use '@/styles/mixins' as *;
+@use '@/styles/classes' as *;
+
+.main {
+  @include header-indent;
+  &__discover {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 137, 25);
+    }
+  }
+}
 </style>

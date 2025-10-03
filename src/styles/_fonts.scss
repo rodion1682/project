@@ -1,0 +1,41 @@
+@use "_mixins.scss" as *;
+
+:root {
+	// font families
+	--font-family-sans: "Open Sans", system-ui, sans-serif;
+	--font-family-red: "Red Hat Display", system-ui, sans-serif;
+	--font-family-roboto: "Roboto", sans-serif;
+
+	// font sizes & line heights
+	--font-size-xs: 10px;
+	--font-line-xs: 18px;
+
+	--font-size-base: 14px;
+	--font-line-base: 20px;
+
+	--font-size-md: 16px;
+	--font-line-md: 24px;
+
+	--font-size-l: 18px;
+	--font-line-l: 26px;
+}
+
+@mixin font-h4 {
+	@include adaptiveValue("font-size", 24, 20);
+	@include adaptiveValue("line-height", 32, 28);
+}
+
+@mixin font-h3 {
+	@include adaptiveValue("font-size", 32, 25);
+	@include adaptiveValue("line-height", 40, 33);
+}
+
+@mixin font-h2 {
+	@include adaptiveValue("font-size", 52, 30);
+	@include adaptiveValue("line-height", 60, 38);
+}
+
+@mixin font-h1 {
+	@include adaptiveValue("font-size", 82, 38.7);
+	@include adaptiveValue("line-height", 108, 48);
+}

@@ -9,6 +9,7 @@ import { storeToRefs } from 'pinia'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import CreditPackItem from '@/components/CreditPackItem.vue'
+import Decimal from 'decimal.js'
 import { useCurrStore } from '@/stores/currencies'
 const currStore = useCurrStore()
 
@@ -113,9 +114,16 @@ const onSubmit = handleSubmit((values) => {
   console.log(values, 'here3333', amount.value)
   const selectedCountry = countriesStore.countries.find((c) => c.id === values.country)
 
+  // Конвертация: деньги = кредиты / rate с округлением до 2 знаков
+  const rate = new Decimal(settingsStore.settings.points_conversion_rate ?? 0)
+  const credits = new Decimal(amount.value ?? 0)
+  const moneyAmount = rate.gt(0)
+    ? credits.div(rate).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber()
+    : 0
+
   topUpStore.topUp(
     selectedMethodId.value,
-    amount.value,
+    moneyAmount,
     selectedCountry?.id,
     values.city,
     values.address,
@@ -299,14 +307,25 @@ const submitWithMethod = (methodId) => {
               </div>
             </label>
             <div class="desc desc-amount" v-if="topUpStore.creditPackId && topUpStore.creditPacks">
-              {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
+              {{
+                topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price
+              }}
               {{ currStore.currency.symbol }}
               =
-              {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
+              {{
+                topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.credits
+              }}
               <img class="coin" src="@/assets/imgs/coin.svg" />
             </div>
             <div class="desc desc-amount" v-else>
-              {{ amount }} {{ currStore.currency.symbol }} = {{ amount }}
+              {{
+                settingsStore.settings.points_conversion_rate
+                  ? new Decimal(amount || 1)
+                    .div(settingsStore.settings.points_conversion_rate)
+                    .toFixed(2)
+                  : '0.00'
+              }}
+              {{ currStore.currency.symbol }} = {{ amount }}
               <img class="coin" src="@/assets/imgs/coin.svg" />
             </div>
 
