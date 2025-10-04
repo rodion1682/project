@@ -111,6 +111,7 @@ export default {
   &.header_primary {
     border: 1px solid var(--bg-primary-color-inverted);
     transition: all 0.3s ease 0s;
+    background-color: transparent;
     @media (any-hover: hover) {
       &:hover {
         background-color: var(--bg-primary-color-inverted);

@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useProfileStore } from '@/stores/profile.js'
-import ProjectViewModal from '@/components/ProjectViewModal.vue'
+import ProjectViewModal from '../modals/ProjectViewModal.vue'
 
 const projects = ref([])
 const selectedProject = ref(null)

@@ -1,28 +1,22 @@
 <script setup>
 import { ref, onMounted, nextTick, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useMenuStore } from '@/stores/menu'
-import { useLoginModalStore } from '@/stores/loginModal'
 import { useAuthStore } from '@/stores/auth'
 import { useCurrStore } from '@/stores/currencies'
-import LanguageSelector from './LanguageSelector.vue'
 import { useProfileStore } from '@/stores/profile'
-import { useLogoutStore } from '@/stores/logout'
 import { useTopUpModalStore } from '@/stores/topUpModal'
 import router from '@/router'
-import UiText from './shared/UiText.vue'
+import UiText, { TextWeight } from './shared/UiText.vue'
 import UiButton, { ButtonThemes } from './shared/UiButton.vue'
 import UiSvgIcon from './shared/UiSvgIcon.vue'
 import Generate3dIcon from '@/static/images/icons/generate_3d.svg'
+import ProfileIcon from '@/static/images/icons/profile.svg'
 
 import { initDynamicAdapt } from '@/utils/dynamic_adapt.js'
 import { useRoute } from 'vue-router'
 import { watch } from 'vue'
 
-const logoutStore = useLogoutStore()
-const loginModalStore = useLoginModalStore()
 const authStore = useAuthStore()
-const menuStore = useMenuStore()
 const currStore = useCurrStore()
 const profileStore = useProfileStore()
 const topUpModalStore = useTopUpModalStore()
@@ -33,10 +27,6 @@ const route = useRoute()
 
 const toggleMenu = () => {
   isOpen.value = !isOpen.value
-}
-
-function changeCurr() {
-  currStore.setActiveCurrency(selectedCurrency.value)
 }
 
 onMounted(async () => {
@@ -51,7 +41,6 @@ function start() {
   if (authStore.isAuth) {
     router.push({ path: '/create/model' })
   } else {
-    // loginModalStore.openModal()
     router.push({ path: '/sign-in' })
   }
   isOpen.value = false
@@ -60,6 +49,12 @@ watch(
   () => route.fullPath,
   () => {
     isOpen.value = false
+  },
+)
+watch(
+  () => authStore.isAuth,
+  (newVal, oldVal) => {
+    console.log('isAuth changed:', oldVal, '→', newVal)
   },
 )
 </script>
@@ -90,119 +85,49 @@ watch(
           </li>
         </ul>
       </nav>
-      <div class="header__action action">
-        <UiButton
-          class="action__button action__button_3d"
-          :theme="ButtonThemes.HEADER_SECONDARY"
-          @click="start()"
-          data-da=".menu__list,659.98"
-        >
-          <UiSvgIcon class="action__icon"><Generate3dIcon /></UiSvgIcon>
-          <span class="action__text">{{ $t('Generate 3D') }}</span>
-        </UiButton>
-        <UiButton
-          class="action__button"
-          @click="router.push({ path: '/sign-in' })"
-          v-if="!authStore.isAuth"
-          :theme="ButtonThemes.HEADER_PRIMARY"
-          data-da=".menu__list,479.98"
-        >
-          {{ $t('Sign Up/Log in') }}
-        </UiButton>
-      </div>
-    </div>
-
-    <!--<header :class="['section header', { active: menuStore.isMenuOpen }]">
-    <div class="wrapper header-wrapper flex items-center justify-between flex-wrap">
-      <div class="left flex items-center">
-        <RouterLink to="/" class="logo flex items-center">
-          <img alt="Logo icon" class="img" src="@/assets/imgs/logo.svg" />
-        </RouterLink>
-        <div class="nav flex">
-          <RouterLink to="/" class="text text-14 text-inter text-white">
-            <b>{{ $t('Home') }}</b>
-          </RouterLink>
-          <RouterLink to="/pricing" class="text text-14 text-inter text-white">
-            <b>{{ $t('Pricing') }}</b>
-          </RouterLink>
-        </div>
-      </div>
-      <div class="center">
-        <button
-          :class="['menu-btn flex items-center', { active: menuStore.isMenuOpen }]"
-          @click="menuStore.toggleMenu"
-        >
-          <div class="menu-btn-icon">
-            <img alt="Menu icon" class="img" src="@/assets/images/menuIcon.svg" />
-            <img alt="Close icon" class="img img-close" src="@/assets/imgs/close.svg" />
-          </div>
-        </button>
-      </div>
-      <div class="right flex items-center justify-end flex-wrap">
-        <div class="nav flex">
-          <button class="button w-144" @click="start()">
-            <img class="img" src="@/assets/imgs/btn-generate-icon.svg" />
-            <span>{{ $t('Generate 3D') }}</span>
-          </button>
-          <button
-            class="button stroke w-144"
-            @click="loginModalStore.openModal"
-            v-if="!authStore.isAuth"
+      <div class="header__content">
+        <div class="header__action action">
+          <UiButton
+            class="action__button action__button_3d"
+            :theme="ButtonThemes.HEADER_SECONDARY"
+            @click="start()"
+            data-da=".menu__list,659.98"
           >
-            {{ $t('Sign In') }}
-          </button>
+            <UiSvgIcon class="action__icon"><Generate3dIcon /></UiSvgIcon>
+            <span class="action__text">{{ $t('Generate 3D') }}</span>
+          </UiButton>
+          <UiButton
+            class="action__button"
+            @click="router.push({ path: '/sign-in' })"
+            :theme="ButtonThemes.HEADER_PRIMARY"
+            v-show="!authStore.isAuth"
+            data-da=".menu__list,479.98"
+          >
+            {{ $t('Sign Up/Log in') }}
+          </UiButton>
         </div>
-        <LanguageSelector />
-        <select
-          class="select"
-          v-if="currStore.currencies && currStore.currencies.length > 1"
-          @change="changeCurr"
-          v-model="selectedCurrency"
+        <div
+          class="header__profile profile"
+          v-show="authStore.isAuth"
+          data-da=".menu__list,439.98,first"
         >
-          <option v-for="(item, i) in currStore.currencies" :value="item" :key="i">
-            {{ item.code }}
-          </option>
-        </select>
-        <div class="nav flex mob">
-          <RouterLink to="/" class="text text-14 text-inter">
-            <b>{{ $t('Home') }}</b>
-          </RouterLink>
-          <RouterLink to="/pricing" class="text text-14 text-inter">
-            <b>{{ $t('Pricing') }}</b>
-          </RouterLink>
-        </div>
-        <div class="text text-14 text-inter text-white dropdown-container" v-if="authStore.isAuth">
-          <div class="dropdown-link">
-            <div class="flex balance items-center justify-between">
-              <div class="button stroke balance-wrapper flex items-center">
-                <div class="text text-14 text-white text-inter flex">
-                  <img alt="coin icon" class="coin" src="@/assets/imgs/coin.svg" />
-                  <span>{{ profileStore.profile.balance }}</span>
-                </div>
-                <button
-                  class="plus-container flex items-center justify-center"
-                  @click="topUpModalStore.openModal()"
-                >
-                  <img alt="Plus icon" class="select-icon" src="@/assets/imgs/plus.svg" />
-                </button>
-              </div>
+          <UiButton
+            class="profile__button"
+            :theme="ButtonThemes.HEADER_PRIMARY"
+            @click="topUpModalStore.openModal()"
+          >
+            <div class="profile__coin _ibg-contain">
+              <img alt="coin icon" class="coin" src="@/static/images/icons/creadit.webp" />
             </div>
-          </div>
-        </div>
-
-        <div class="header-icons flex" v-if="authStore.isAuth">
-          <RouterLink
-            v-if="authStore.isAuth"
-            to="/profile/data"
-            class="button w-145 profile-button"
-          >
-            <img alt="profile icon" class="img" src="@/assets/imgs/profile.svg" />
-            <b class="text-white">{{ $t('My profile') }}</b>
+            <span class="profile__balance">{{ profileStore.profile.balance }}</span>
+          </UiButton>
+          <RouterLink class="profile__link" to="/profile/data">
+            <UiSvgIcon class="profile__icon"><ProfileIcon /></UiSvgIcon>
+            <UiText class="profile__text" :weight="TextWeight.BOLD" :text="$t('My profile')" />
           </RouterLink>
         </div>
       </div>
     </div>
-  </header>-->
   </header>
 </template>
 
@@ -241,7 +166,20 @@ watch(
   }
   &__menu {
   }
+  &__content {
+    display: flex;
+    align-items: center;
+    @include adaptiveValue('gap', 15, 10, 1470, 992, 1);
+    @media (max-width: $md3) {
+      order: 2;
+    }
+  }
   &__action {
+  }
+  &__profile {
+    @media (max-width: $md5) {
+      margin-bottom: 5px;
+    }
   }
 }
 
@@ -270,7 +208,7 @@ watch(
   display: flex;
   align-items: stretch;
   @media (max-width: $md3) {
-    order: 3;
+    order: 4;
   }
   &__icon {
     margin: auto 0px;
@@ -358,9 +296,6 @@ watch(
   display: flex;
   align-items: center;
   @include adaptiveValue('gap', 15, 10, 1470, 768, 1);
-  @media (max-width: $md3) {
-    order: 2;
-  }
   &__button {
     position: relative;
     z-index: var(--header-z-index);
@@ -398,6 +333,86 @@ watch(
     position: relative;
     z-index: var(--base-z-index);
     transition: color 0.3s ease 0s;
+  }
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  @include adaptiveValue('gap', 15, 10, 1470, 992, 1);
+  &__button {
+    padding: 5px 10px !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    @media (any-hover: hover) {
+      &:hover {
+        .profile__balance {
+          color: var(--secondary-color-inverted);
+        }
+      }
+    }
+  }
+  &__coin {
+    width: 24px;
+    height: 24px;
+  }
+  &__balance {
+    display: inline-block;
+    color: var(--primary-color);
+  }
+  &__link {
+    padding: 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    @media (any-hover: hover) {
+      &:hover {
+        .profile__icon {
+          background-color: var(--bg-primary-color-inverted);
+          svg {
+            fill: var(--secondary-color-inverted);
+          }
+        }
+      }
+    }
+  }
+  &__icon {
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bg-primary-color-inverted);
+    border-radius: var(--border-radius);
+    position: relative;
+    background-color: transparent;
+    transition: background-color 0.3s ease 0s;
+    svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      transition: fill 0.3s ease 0s;
+      fill: var(--primary-color);
+    }
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: var(--bg-primary-color-inverted);
+        svg {
+          fill: var(--secondary-color-inverted);
+        }
+      }
+    }
+  }
+  &__text {
+    font-family: var(--font-family-sans);
+    @media (max-width: $md2) and (min-width: $md5) {
+      @include hide-item;
+    }
   }
 }
 

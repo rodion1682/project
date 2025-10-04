@@ -54,6 +54,7 @@ function submitLogin() {
   }
   loginStore.updateData(data)
   loginStore.submitLogin()
+  router.push('/profile/data')
 }
 
 //function close() {

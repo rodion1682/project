@@ -7,7 +7,7 @@ import FooterView from './components/FooterView.vue'
 import LoginModal from './components/LoginModal.vue'
 import RegModal from './components/RegModal.vue'
 import RecoverModal from './components/RecoverModal.vue'
-import TopUpModal from './components/TopUpModal.vue'
+import TopUpModal from './components/modals/TopUpModal.vue'
 import CookiesModal from './components/CookiesModal.vue'
 import ContactModal from './components/ContactModal.vue'
 import ProductModal from './components/ProductModal.vue'
@@ -45,7 +45,7 @@ import { useRestoreModalStore } from '@/stores/restorePasswordModal.js'
 const faqStore = useFaq()
 const globalStore = useGlobalStore()
 const loginModalStore = useLoginModalStore()
-const regModalStore = useRegModalStore()
+//const regModalStore = useRegModalStore()
 const recoverModalStore = useRecoverModalStore()
 const topUpModalStore = useTopUpModalStore()
 const cookiesModalStore = useCookiesModalStore()
@@ -71,7 +71,7 @@ watch(
   () => router.currentRoute.value,
   () => {
     window.scrollTo(0, 0)
-    regModalStore.closeModal()
+    // regModalStore.closeModal()
 
     if (
       router.currentRoute.value.name === 'ResetPassword' &&

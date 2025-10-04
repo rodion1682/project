@@ -3,50 +3,24 @@ import { ref, onMounted, watch } from 'vue'
 import '@splidejs/splide/dist/css/splide.min.css'
 import { useProductsStore } from '@/stores/products'
 import { useGlobalStore } from '@/stores/global'
-import { useLoginModalStore } from '@/stores/loginModal'
 import { useAuthStore } from '@/stores/auth'
 import router from '@/router'
 import { useTopUpStore } from '@/stores/topUp.js'
-import CreditPackItem from '@/components/CreditPackItem.vue'
-import { Form, Field, ErrorMessage } from 'vee-validate'
 import * as yup from 'yup'
 import { useTopUpModalStore } from '@/stores/topUpModal.js'
 import { storeToRefs } from 'pinia'
-//import { useSettingsStore } from '@/stores/settings.js'
-import { useCurrStore } from '@/stores/currencies.js'
-import ProjectViewModal from '@/components/ProjectViewModal.vue'
-import UiText, {
-  TextSize,
-  TextWeight,
-  TextFont,
-  TextTheme,
-  TextAlign,
-} from '@/components/shared/UiText.vue'
-import UiLink, { LinkTheme } from '@/components/shared/UiLink.vue'
-import UiButton, { ButtonThemes } from '@/components/shared/UiButton.vue'
-
-import UiSvgIcon from '@/components/shared/UiSvgIcon.vue'
-import TextureView from '@/components/create/TextureView.vue'
+import ProjectViewModal from '@/components/modals/ProjectViewModal.vue'
 
 const globalStore = useGlobalStore()
 const productsStore = useProductsStore()
-const loginModalStore = useLoginModalStore()
 const authStore = useAuthStore()
 const topUpStore = useTopUpStore()
 const topUpModalStore = useTopUpModalStore()
-//const settingsStore = useSettingsStore()
-const currStore = useCurrStore()
-
-import Decimal from 'decimal.js'
-import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Navigation } from 'swiper/modules'
-import 'swiper/css/navigation'
-import 'swiper/css'
 import HomeIdeasSection from './HomeIdeasSection.vue'
 import HomeAdvantagesSection from './HomeAdvantagesSection.vue'
 import HomeInstantlySection from './HomeInstantlySection.vue'
 import HomeDiscoverSection from './HomeDiscoverSection.vue'
-import PriceSection from '@/components/widgets/PriceSection.vue'
+import PriceSection from '@/components/price/PriceSection.vue'
 
 const customAmountSchema = yup.object({
   amount: yup
@@ -62,7 +36,6 @@ function start() {
     router.push({ path: '/create/model' })
   } else {
     router.push({ path: '/sign-in' })
-    // loginModalStore.openModal()
   }
 }
 const domain = ref('')
@@ -93,7 +66,6 @@ function onSubmitCustomAmount(values) {
     topUpModalStore.setStep(2)
     topUpModalStore.openModal()
   } else {
-    // loginModalStore.openModal()
     router.push('/sing-in')
   }
 }
@@ -110,8 +82,7 @@ function onSubmitCustomAmount(values) {
       :on-submit-custom-amount="onSubmitCustomAmount"
       :custom-amount-schema="customAmountSchema"
     />
-    <!--<section class="main__prices prices">
-      <div class="prices__background _ibg-contain">
+    <!--<div class="prices__background _ibg-contain">
         <img src="@/static/images/backgrounds/3d-render-background.webp" />
       </div>
       <div class="prices__top">

@@ -307,9 +307,7 @@ const submitWithMethod = (methodId) => {
               </div>
             </label>
             <div class="desc desc-amount" v-if="topUpStore.creditPackId && topUpStore.creditPacks">
-              {{
-                topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price
-              }}
+              {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
               {{ currStore.currency.symbol }}
               =
               {{
@@ -321,8 +319,8 @@ const submitWithMethod = (methodId) => {
               {{
                 settingsStore.settings.points_conversion_rate
                   ? new Decimal(amount || 1)
-                    .div(settingsStore.settings.points_conversion_rate)
-                    .toFixed(2)
+                      .div(settingsStore.settings.points_conversion_rate)
+                      .toFixed(2)
                   : '0.00'
               }}
               {{ currStore.currency.symbol }} = {{ amount }}
@@ -359,3 +357,9 @@ const submitWithMethod = (methodId) => {
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+@use '@/styles/mixins' as *;
+@use '@/styles/media' as *;
+@use '@/styles/classes' as *;
+</style>

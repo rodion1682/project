@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useLoginModalStore } from '@/stores/loginModal'
 import { useRegModalStore } from '@/stores/regModal'
 import { useRecoverModalStore } from '@/stores/recoverModal'
@@ -16,16 +16,19 @@ import { TextWeight } from '@/components/shared/UiText.vue'
 import UiLink from '@/components/shared/UiLink.vue'
 import { LinkTheme } from '@/components/shared/UiLink.vue'
 import UiInput from '@/components/shared/UiInput.vue'
-import { RouterLink } from 'vue-router'
+import { onBeforeRouteUpdate, RouterLink, useRoute } from 'vue-router'
 import { useRegStore } from '@/stores/reg'
 import { useStaticStore } from '@/stores/static'
+import router from '@/router'
 
 const { t } = useI18n()
+const route = useRoute()
 //const loginModalStore = useLoginModalStore()
-const regModalStore = useRegModalStore()
+//const regModalStore = useRegModalStore()
 const regStore = useRegStore()
 const staticStore = useStaticStore()
-const loginStore = useLoginStore()
+
+//const loginStore = useLoginStore()
 
 //function openLoginModal() {
 //  loginModalStore.openModal()
@@ -50,7 +53,19 @@ function submitReg() {
   }
   regStore.updateData(data)
   regStore.submitReg()
+  router.push('/profile/data')
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    regStore.clearError()
+  },
+)
+
+onBeforeRouteUpdate(() => {
+  regStore.clearError()
+})
 
 //function close() {
 //  regStore.clearError()
@@ -111,15 +126,15 @@ function submitReg() {
           />
           <UiInput
             class="main__input"
-            v-model="pass"
-            :type="passType ? 'password' : 'text'"
+            v-model="password"
+            type="password"
             :placeholder="t('Password')"
             autocomplete="current-password"
           />
           <UiInput
             class="main__input"
             v-model="passConfirm"
-            :type="passType ? 'password' : 'text'"
+            type="password"
             :placeholder="t('Password Confirm')"
             autocomplete="current-password"
           />
@@ -167,8 +182,8 @@ function submitReg() {
             >{{ t('Confirm') }}</UiButton
           >
           <Transition>
-            <div class="main__error" v-if="loginStore.error">
-              {{ $t(loginStore.error) }}
+            <div class="main__error" v-if="regStore.error">
+              {{ $t(regStore.error) }}
             </div>
           </Transition>
         </form>
@@ -325,6 +340,12 @@ function submitReg() {
       width: 100%;
       margin: 0 auto;
     }
+  }
+  &__error {
+    font-family: var(--font-family-sans);
+    padding-top: 10px;
+    display: inline-block;
+    color: var(--error-color);
   }
 }
 

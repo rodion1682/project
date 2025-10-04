@@ -1,12 +1,11 @@
 <script setup>
 import { ref, onMounted, watchEffect } from 'vue'
 import { useProfileStore } from '@/stores/profile'
-import { useTopUpModalStore } from '@/stores/topUpModal'
-import { useLogoutStore } from '@/stores/logout.js'
+import UiText, { TextAlign, TextSize, TextTheme, TextWeight } from '../shared/UiText.vue'
+import UiInput from '../shared/UiInput.vue'
+import UiButton from '../shared/UiButton.vue'
 
-const topUpModalStore = useTopUpModalStore()
 const profileStore = useProfileStore()
-const logoutStore = useLogoutStore()
 
 const email = ref('')
 const name = ref('')
@@ -42,54 +41,106 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="profile-data-container flex flex-wrap">
-    <div class="profile-data-change flex justify-between">
-      <div class="profile-data-change-left">
-        <div class="title-container">
-          <form
-            class="form"
-            @submit.prevent="profileStore.updateProfile(name, surname, email, phone)"
-          >
-            <div class="label-list">
-              <div class="flex labels">
-                <label class="label flex items-center">
-                  <div class="input-container">
-                    <input type="text" v-model="name" :placeholder="$t('Name')" />
-                  </div>
-                </label>
-                <label class="label flex items-center">
-                  <div class="input-container">
-                    <input type="text" v-model="surname" :placeholder="$t('Surname')" />
-                  </div>
-                </label>
-              </div>
-              <label class="label flex items-center">
-                <div class="input-container">
-                  <input type="text" v-model="email" :placeholder="$t('Email')" />
-                </div>
-              </label>
-              <label class="label flex items-center">
-                <div class="input-container">
-                  <input type="text" v-model="phone" :placeholder="$t('Phone')" />
-                </div>
-              </label>
-            </div>
-            <button class="button big w-144">
-              <span>{{ $t('Save changes') }}</span>
-            </button>
-          </form>
-          <Transition>
-            <div class="text text-14 text-red text-error" v-if="profileStore.error2">
-              {{ $t(profileStore.error2) }}
-            </div>
-          </Transition>
-          <Transition>
-            <div class="text text-14 text-green text-error" v-if="profileStore.success">
-              {{ $t(profileStore.success) }}
-            </div>
-          </Transition>
-        </div>
+  <div class="data">
+    <UiText
+      class="data__title"
+      :size="TextSize.H4"
+      :weight="TextWeight.BOLD"
+      :theme="TextTheme.SECONDARY"
+      :align="TextAlign.CENTER"
+      :title="$t('Personal information')"
+    />
+    <form
+      class="data__form"
+      @submit.prevent="profileStore.updateProfile(name, surname, email, phone)"
+    >
+      <div class="data__inputs">
+        <UiInput
+          class="data__input"
+          v-model="name"
+          type="text"
+          :placeholder="$t('Name')"
+          autocomplete="name"
+        />
+        <UiInput
+          class="data__input"
+          v-model="surname"
+          type="text"
+          :placeholder="$t('Surname')"
+          autocomplete="surname"
+        />
+        <UiInput
+          class="data__input"
+          v-model="email"
+          type="text"
+          :placeholder="$t('Email')"
+          autocomplete="email"
+        />
+        <UiInput
+          class="data__input"
+          v-model="phone"
+          type="text"
+          :placeholder="$t('Phone')"
+          autocomplete="phone"
+        />
       </div>
-    </div>
+      <UiButton class="data__button _button_primary">{{ $t('Save changes') }}</UiButton>
+    </form>
+    <Transition>
+      <UiText
+        class="data__error"
+        :theme="TextTheme.ERROR"
+        :size="TextSize.H4"
+        :align="TextAlign.CENTER"
+        v-if="profileStore.error2"
+        :title="$t(profileStore.error2)"
+      />
+    </Transition>
+    <Transition>
+      <UiText
+        v-if="profileStore.success"
+        class="data__success"
+        :theme="TextTheme.SUCCESS"
+        :size="TextSize.H4"
+        :align="TextAlign.CENTER"
+        :title="$t(profileStore.success)"
+      />
+    </Transition>
   </div>
 </template>
+
+<style lang="scss" scoped>
+@use '@/styles/mixins' as *;
+@use '@/styles/media' as *;
+@use '@/styles/classes' as *;
+
+.data {
+  max-width: 372px;
+  margin: 0 auto;
+  &__title {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 30, 15);
+    }
+  }
+  &__form {
+  }
+  &__inputs {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 30, 15);
+    }
+  }
+  &__input {
+    &:not(:last-child) {
+      margin-bottom: 12px;
+    }
+  }
+  &__button {
+    min-width: 222px;
+    margin: 0 auto;
+  }
+  &__error,
+  &__success {
+    margin-top: 8px;
+  }
+}
+</style>

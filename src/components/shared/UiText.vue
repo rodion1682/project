@@ -21,6 +21,9 @@ export const TextTheme = Object.freeze({
   PRIMARY: 'primary',
   SECONDARY: 'secondary',
   SECONDARY_INVERTED: 'secondary_inverted',
+  EMAIL: 'email',
+  ERROR: 'error',
+  SUCCESS: 'success',
 })
 
 export const TextAlign = Object.freeze({
@@ -117,6 +120,15 @@ export default {
   }
   &.secondary_inverted {
     color: var(--secondary-color-inverted);
+  }
+  &.email {
+    color: var(--link-color);
+  }
+  &.error {
+    color: var(--error-color);
+  }
+  &.success {
+    color: var(--success-color);
   }
 
   &.left {

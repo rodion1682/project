@@ -1,10 +1,10 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 import ModelViewer from '@/components/create/3DModelViewer.vue'
-import UiButton, { ButtonThemes } from './shared/UiButton.vue'
-import UiSvgIcon from './shared/UiSvgIcon.vue'
+import UiButton, { ButtonThemes } from '@/components/shared/UiButton.vue'
+import UiSvgIcon from '@/components/shared/UiSvgIcon.vue'
 import CloseIcon from '@/static/images/icons/action/close.svg'
-import UiText, { TextSize, TextWeight } from './shared/UiText.vue'
+import UiText, { TextSize, TextWeight } from '@/components/shared/UiText.vue'
 
 const props = defineProps({
   asset: Object,
