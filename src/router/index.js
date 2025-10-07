@@ -11,7 +11,7 @@ import FaqView from '../views/FaqView.vue'
 import TopUp from '../views/TopUp.vue'
 import OfferSuccessPage from '../views/OfferSuccessPage.vue'
 import PricingPage from '../views/PricingPage.vue'
-import CreateView from '../views/CreateView.vue'
+import CreateView from '../views/create/CreateView.vue'
 import SignInView from '../views/SignInView.vue'
 import SignUpView from '@/views/SignUpView.vue'
 

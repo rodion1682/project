@@ -6,12 +6,15 @@
       :placeholder="placeholder"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
+      @blur="$emit('blur', $event)"
       class="UiInput__field"
     />
   </div>
 </template>
 
 <script setup>
+defineOptions({ inheritAttrs: false })
+
 defineProps({
   modelValue: {
     type: String,
@@ -28,7 +31,7 @@ defineProps({
   className: String,
 })
 
-defineEmits(['update:modelValue'])
+defineEmits(['update:modelValue', 'blur'])
 </script>
 
 <style lang="scss" scoped>

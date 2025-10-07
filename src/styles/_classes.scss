@@ -130,6 +130,79 @@
 	}
 }
 
+// modal customization ========================================================================================================================================================
+
+._modal {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	z-index: var(--modal-z-index);
+}
+
+._modal-overlay {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background-color: var(--modal-bg-overlay);
+}
+
+._modal-inner {
+	position: absolute;
+	background-color: var(--primary-color-inverted);
+	border-radius: var(--border-radius);
+	height: 80%;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	overflow-y: auto !important;
+}
+
+._modal-close {
+	position: absolute;
+	right: 15px;
+	top: 15px;
+	z-index: var(--base-z-index);
+}
+
+// select customization ========================================================================================================================================================
+
+._select-wrapper {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+	&::after {
+		content: "";
+		position: absolute;
+		right: 15px;
+		top: 50%;
+		width: 14px;
+		height: 14px;
+		background-color: var(--primary-color);
+		mask: url("@/static/images/icons/action/back.svg") no-repeat center;
+		mask-size: contain;
+		transform: translateY(-50%) rotate(-90deg);
+		transition: transform 0.3s ease;
+		pointer-events: none;
+	}
+}
+
+._select {
+	width: 100%;
+	min-height: 46px;
+	padding: 0 40px 0 15px;
+	background-color: var(--bg-primary-color);
+	border: 1px solid var(--bg-fifth-color);
+	border-radius: var(--border-radius);
+	font-family: var(--font-family-sans);
+	color: var(--primary-color);
+	appearance: none;
+	cursor: pointer;
+}
+
 @mixin hide-item {
 	width: 0;
 	height: 0;

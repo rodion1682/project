@@ -17,5 +17,11 @@ body {
 }
 
 .page {
+	min-height: 100vh;
 	overflow-x: hidden;
+	display: flex;
+	flex-direction: column;
+	&__content {
+		flex: 1 1 auto;
+	}
 }

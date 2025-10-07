@@ -17,24 +17,31 @@ const { generatedModel } = storeToRefs(modelStore)
 
 const { page } = toRefs(props)
 
-import ModelView from '../components/create/ModelView.vue'
-import TextureView from '../components/create/TextureView.vue'
-import TextureOptions from '../components/create/TextureOptions.vue'
-import StylizeView from '../components/create/StylizeView.vue'
-import StylizeOptions from '../components/create/StylizeOptions.vue'
-import ReviveView from '../components/create/ReviveView.vue'
-import ReviveOptions from '../components/create/ReviveOptions.vue'
-import ModelViewer from '../components/create/3DModelViewer.vue'
+import ModelView from '@/components/create/ModelView.vue'
+import TextureView from '@/components/create/TextureView.vue'
+import TextureOptions from '@/components/create/TextureOptions.vue'
+import StylizeView from '@/components/create/StylizeView.vue'
+import StylizeOptions from '@/components/create/StylizeOptions.vue'
+import ReviveView from '@/components/create/ReviveView.vue'
+import ReviveOptions from '@/components/create/ReviveOptions.vue'
+import ModelViewer from '@/components/create/3DModelViewer.vue'
 </script>
 <template>
-  <div class="create-page">
+  <main class="create">
+    <div class="create__aside">
+      <ModelView v-if="page === 'model'" />
+      <TextureView v-if="page === 'texture'" />
+      <StylizeView v-if="page === 'stylize'" />
+      <ReviveView v-if="page === 'revive'" />
+    </div>
+    <div class="create__body"></div>
+  </main>
+  <!--<div class="create-page">
     <div class="section create-section">
       <div class="wrapper flex">
         <div class="center">
-          <ModelView v-if="page === 'model'" />
-          <TextureView v-if="page === 'texture'" />
-          <StylizeView v-if="page === 'stylize'" />
-          <ReviveView v-if="page === 'revive'" />
+         
+          
         </div>
         <div class="right flex flex-wrap items-start">
           <div class="revive-side" v-if="page === 'revive'">
@@ -152,5 +159,15 @@ import ModelViewer from '../components/create/3DModelViewer.vue'
         </div>
       </div>
     </div>
-  </div>
+  </div>-->
 </template>
+
+<style lang="scss" scoped>
+@use '@/styles/mixins' as *;
+@use '@/styles/media' as *;
+@use '@/styles/classes' as *;
+
+.create {
+  @include header-indent;
+}
+</style>

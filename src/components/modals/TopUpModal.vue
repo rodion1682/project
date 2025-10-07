@@ -11,6 +11,17 @@ import * as yup from 'yup'
 import CreditPackItem from '@/components/CreditPackItem.vue'
 import Decimal from 'decimal.js'
 import { useCurrStore } from '@/stores/currencies'
+import UiButton, { ButtonThemes } from '@/components/shared/UiButton.vue'
+import UiSvgIcon from '@/components/shared/UiSvgIcon.vue'
+import CloseIcon from '@/static/images/icons/action/close.svg'
+import UiText, {
+  TextAlign,
+  TextFont,
+  TextSize,
+  TextTheme,
+  TextWeight,
+} from '@/components/shared/UiText.vue'
+import UiInput from '../shared/UiInput.vue'
 const currStore = useCurrStore()
 
 const topUpModalStore = useTopUpModalStore()
@@ -148,112 +159,86 @@ const submitWithMethod = (methodId) => {
 </script>
 
 <template>
-  <div :class="['modal flex justify-center items-center topup-modal', { wide: step == 1 }]">
-    <div class="overlay" @click="closeModal"></div>
-    <div class="modal-wrapper">
-      <img alt="Close icon" class="close" src="@/assets/img/close.svg" @click="closeModal" />
-      <div class="modal-form-container text-center">
-        <!-- STEP 1 -->
-        <div class="step pricing-section" v-if="step == 1">
-          <div class="text text-24 text-inter">
-            <b>{{ $t('Enter your amount') }}</b>
-          </div>
-          <div class="label-container flex items-center justify-center">
-            <label class="label">
-              <input type="text" v-model="amount" />
-              <img class="coin" src="@/assets/imgs/coin.svg" />
-            </label>
-            <button class="button big w-130" v-if="amount" @click="step = 2">
-              {{ $t('Submit') }}
-            </button>
-          </div>
-          <div class="text text-or text-20 text-inter">{{ $t('Or') }}</div>
-          <div class="text text-48">
-            <b>{{ $t('Pick the Credit Pack That Fits Your Needs') }}</b>
-          </div>
-          <div class="list flex flex-wrap">
-            <!-- PACKS -->
-            <CreditPackItem
-              v-for="(pack, i) in topUpStore.creditPacks"
-              :key="pack.id"
-              :pack="pack"
-              :equivalent="i !== 0"
-              :most-popular="i === 1"
+  <div class="modal _modal">
+    <div class="modal__overlay _modal-overlay" @click="closeModal"></div>
+    <div class="modal__inner _modal-inner">
+      <UiButton class="modal__close _modal-close" :theme="ButtonThemes.ROTATE" @click="closeModal"
+        ><UiSvgIcon><CloseIcon /></UiSvgIcon
+      ></UiButton>
+      <div class="modal__top">
+        <UiText
+          class="modal__title"
+          :font="TextFont.RED"
+          :size="TextSize.H4"
+          :weight="TextWeight.BOLD"
+          :align="TextAlign.CENTER"
+          :title="$t('Top up balance')"
+        />
+        <UiText
+          class="modal__text"
+          :font="TextFont.RED"
+          :weight="TextWeight.BOLD"
+          :align="TextAlign.CENTER"
+          :text="$t('Contact information')"
+        />
+      </div>
+      <form class="modal__form" @submit.prevent="onSubmit">
+        <div class="modal__items">
+          <div class="modal__item">
+            <UiInput
+              class="modal__input"
+              type="text"
+              name="name"
+              :placeholder="$t('First name')"
+              v-model="name"
+              @update:modelValue="nameChange"
+              @blur="nameBlur"
             />
-            <div class="item"></div>
+            <UiText class="modal__error" :theme="TextTheme.ERROR" :text="nameError" />
           </div>
-        </div>
-
-        <!-- STEP 2 -->
-        <div class="step" v-if="step == 2">
-          <div class="text text-24">
-            <b>{{ $t('Top up') }}</b>
+          <div class="modal__item">
+            <UiInput
+              class="modal__input"
+              type="text"
+              name="surname"
+              :placeholder="$t('Last name')"
+              v-model="surname"
+              @update:modelValue="surnameChange"
+              @blur="surnameBlur"
+            />
+            <UiText class="modal__error" :theme="TextTheme.ERROR" :text="surnameError" />
           </div>
-
-          <form class="form" @submit.prevent="onSubmit">
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="name"
-                  :placeholder="$t('First name')"
-                  :value="name"
-                  @input="nameChange"
-                  @blur="nameBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ nameError }}</div>
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="surname"
-                  :placeholder="$t('Last name')"
-                  :value="surname"
-                  @input="surnameChange"
-                  @blur="surnameBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ surnameError }}</div>
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="phone"
-                  :placeholder="$t('Phone')"
-                  :value="phone"
-                  @input="phoneChange"
-                  @blur="phoneBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ phoneError }}</div>
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="email"
-                  :placeholder="$t('E-mail')"
-                  :value="email"
-                  @input="emailChange"
-                  @blur="emailBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ emailError }}</div>
-              </div>
-            </label>
-
-            <label class="label" v-if="countriesStore.countries.length">
-              <div class="input-container">
+          <div class="modal__item">
+            <UiInput
+              class="modal__input"
+              type="text"
+              name="email"
+              :placeholder="$t('E-mail')"
+              v-model="email"
+              @update:modelValue="emailChange"
+              @blur="emailBlur"
+            />
+            <UiText class="modal__error" :theme="TextTheme.ERROR" :text="emailError" />
+          </div>
+          <div class="modal__item">
+            <UiInput
+              class="modal__input"
+              name="phone"
+              :placeholder="$t('Phone')"
+              v-model="phone"
+              @update:modelValue="phoneChange"
+              @blur="phoneBlur"
+            />
+            <UiText class="modal__error" :theme="TextTheme.ERROR" :text="phoneError" />
+          </div>
+          <div class="modal__item" v-if="countriesStore.countries.length">
+            <div class="modal__input">
+              <div class="_select-wrapper">
                 <select
                   name="country"
-                  class="select"
+                  class="_select"
                   :value="country"
-                  @change="countryChange"
+                  @change="(e) => countryChange(Number(e.target.value))"
                   @blur="countryBlur"
                 >
                   <option disabled value="">{{ $t('Country') }}</option>
@@ -261,99 +246,86 @@ const submitWithMethod = (methodId) => {
                     {{ item.title }}
                   </option>
                 </select>
-                <div class="text-error text-14 text-orange-red">{{ countryError }}</div>
+                <UiText class="modal__error" :theme="TextTheme.ERROR" :text="countryError" />
               </div>
-            </label>
-
-            <label class="label">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="city"
-                  :placeholder="$t('City')"
-                  :value="city"
-                  @input="cityChange"
-                  @blur="cityBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ cityError }}</div>
-              </div>
-            </label>
-
-            <label class="label">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="address"
-                  :placeholder="$t('Address')"
-                  :value="address"
-                  @input="addressChange"
-                  @blur="addressBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ addressError }}</div>
-              </div>
-            </label>
-
-            <label class="label">
-              <div class="input-container">
-                <input
-                  type="text"
-                  name="postCode"
-                  :placeholder="$t('Post code')"
-                  :value="postCode"
-                  @input="postCodeChange"
-                  @blur="postCodeBlur"
-                />
-                <div class="text-error text-14 text-orange-red">{{ postCodeError }}</div>
-              </div>
-            </label>
-            <div class="desc desc-amount" v-if="topUpStore.creditPackId && topUpStore.creditPacks">
-              {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
-              {{ currStore.currency.symbol }}
-              =
-              {{
-                topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.credits
-              }}
-              <img class="coin" src="@/assets/imgs/coin.svg" />
             </div>
-            <div class="desc desc-amount" v-else>
-              {{
-                settingsStore.settings.points_conversion_rate
-                  ? new Decimal(amount || 1)
-                      .div(settingsStore.settings.points_conversion_rate)
-                      .toFixed(2)
-                  : '0.00'
-              }}
-              {{ currStore.currency.symbol }} = {{ amount }}
-              <img class="coin" src="@/assets/imgs/coin.svg" />
+          </div>
+          <div class="modal__local">
+            <div class="modal__item modal__item_city">
+              <UiInput
+                class="modal__input"
+                name="city"
+                :placeholder="$t('City')"
+                v-model="city"
+                @update:modelValue="cityChange"
+                @blur="cityBlur"
+              />
+              <UiText class="modal__error" :theme="TextTheme.ERROR" :text="cityError" />
             </div>
-
-            <div class="buttons">
-              <button
-                :disabled="!meta.valid || isSubmitting"
-                v-for="method in settingsStore.paymentMethods"
-                :key="method.id"
-                class="button w-180 big"
-                type="submit"
-                @click="submitWithMethod(method.id)"
-              >
-                <span>{{ $t(method.title) }}</span>
-              </button>
+            <div class="modal__item modal__item_zip">
+              <UiInput
+                class="modal__input"
+                name="postCode"
+                :placeholder="$t('ZIP code')"
+                v-model="postCode"
+                @update:modelValue="postCodeChange"
+                @blur="postCodeBlur"
+              />
+              <UiText class="modal__error" :theme="TextTheme.ERROR" :text="postCodeError" />
             </div>
-
-            <Transition>
-              <div
-                class="text text-14 text-orange-red text-error text-inter"
-                v-if="topUpStore.error"
-              >
-                {{ $t(topUpStore.error) }}
-              </div>
-            </Transition>
-          </form>
+          </div>
+          <div class="modal__item">
+            <UiInput
+              class="modal__input"
+              name="address"
+              :placeholder="$t('Address')"
+              v-model="address"
+              @update:modelValue="addressChange"
+              @blur="addressBlur"
+            />
+            <UiText class="modal__error" :theme="TextTheme.ERROR" :text="addressError" />
+          </div>
         </div>
-        <div class="desc" v-if="step == 2">
-          {{ settingsStore.settings.requisites }}
+        <div class="modal__amount" v-if="topUpStore.creditPackId && topUpStore.creditPacks">
+          {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
+          {{ currStore.currency.symbol }}
+          =
+          {{ topUpStore.creditPacks.find((item) => item.id == topUpStore.creditPackId)?.price }}
+          <div class="modal__icon _ibg-contain">
+            <img src="@/static/images/icons/creadit.webp" />
+          </div>
         </div>
-      </div>
+        <div class="modal__amount" v-else>
+          {{ amount }} {{ currStore.currency.symbol }} = {{ amount }}
+          <div class="modal__icon _ibg-contain">
+            <img src="@/static/images/icons/creadit.webp" />
+          </div>
+        </div>
+        <UiText
+          class="modal__method"
+          :font="TextFont.RED"
+          :weight="TextWeight.BOLD"
+          :text="$t('Payment method:')"
+          :align="TextAlign.CENTER"
+        />
+        <div class="modal__buttons">
+          <UiButton
+            :disabled="!meta.valid || isSubmitting"
+            v-for="method in settingsStore.paymentMethods"
+            :key="method.id"
+            class="modal__button _button-bordered"
+            type="submit"
+            @click="submitWithMethod(method.id)"
+          >
+            <div class="modal__button-image _ibg-contain" v-if="method.image">
+              <img :src="method.image" :alt="$t(method.title)" />
+            </div>
+            <template v-else>
+              <span>{{ $t(method.title) }}</span>
+            </template>
+          </UiButton>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -362,4 +334,104 @@ const submitWithMethod = (methodId) => {
 @use '@/styles/mixins' as *;
 @use '@/styles/media' as *;
 @use '@/styles/classes' as *;
+
+.modal {
+  &__overlay {
+  }
+  &__inner {
+    width: 100%;
+    max-width: 514px;
+    @include adaptiveValue('padding-top', 30, 15, 1470, 768, 1);
+    @include adaptiveValue('padding-bottom', 30, 15, 1470, 768, 1);
+    @include adaptiveValue('padding-left', 15, 10, 1470, 768, 1);
+    @include adaptiveValue('padding-right', 15, 10, 1470, 768, 1);
+    height: fit-content;
+    @media (max-width: $md2) {
+      height: 80%;
+    }
+  }
+  &__close {
+    top: 0px;
+    right: 0px;
+  }
+  &__top {
+    padding: 0px 40px;
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 10);
+    }
+  }
+  &__title {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 15);
+    }
+  }
+  &__text {
+  }
+  &__form {
+    max-width: 372px;
+    margin: 0 auto;
+  }
+  &__items {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 15);
+    }
+  }
+  &__local {
+    display: flex;
+    gap: 10px;
+  }
+  &__item {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 15, 8);
+    }
+    &_city {
+      flex: 0 1 70%;
+    }
+    &_zip {
+      flex: 0 1 30%;
+    }
+  }
+
+  &__input {
+  }
+  &__error {
+    margin-top: 5px;
+  }
+  &__amount {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--font-family-rad);
+    font-weight: 700;
+    &:not(:last-child) {
+      margin-bottom: 10px;
+    }
+  }
+  &__icon {
+    width: 24px;
+    height: 24px;
+  }
+  &__method {
+    &:not(:last-child) {
+      &:not(:last-child) {
+        @include adaptiveValue('margin-bottom', 20, 10);
+      }
+    }
+  }
+  &__buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  &__button {
+    flex: 0 0 100px;
+    &-image {
+      width: 30px;
+      height: 30px;
+    }
+  }
+}
 </style>

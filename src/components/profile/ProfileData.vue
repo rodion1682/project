@@ -5,6 +5,13 @@ import UiText, { TextAlign, TextSize, TextTheme, TextWeight } from '../shared/Ui
 import UiInput from '../shared/UiInput.vue'
 import UiButton from '../shared/UiButton.vue'
 
+defineProps({
+  className: {
+    type: String,
+    default: '',
+  },
+})
+
 const profileStore = useProfileStore()
 
 const email = ref('')
@@ -41,7 +48,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="data">
+  <div :class="['data', className]">
     <UiText
       class="data__title"
       :size="TextSize.H4"
@@ -125,14 +132,14 @@ onMounted(() => {
   &__form {
   }
   &__inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 30, 15);
     }
   }
   &__input {
-    &:not(:last-child) {
-      margin-bottom: 12px;
-    }
   }
   &__button {
     min-width: 222px;

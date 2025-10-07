@@ -20,9 +20,9 @@ function close() {
 </script>
 
 <template>
-  <div class="modal">
-    <div class="modal__overlay" @click="close"></div>
-    <div class="modal__inner">
+  <div class="modal _modal">
+    <div class="modal__overlay _modal-overlay" @click="close"></div>
+    <div class="modal__inner _modal-inner">
       <div class="modal__top">
         <UiText
           class="modal__title"
@@ -30,7 +30,7 @@ function close() {
           :size="TextSize.H4"
           :title="modelTitle"
         ></UiText>
-        <UiButton class="modal__close" :theme="ButtonThemes.ROTATE" @click="close"
+        <UiButton class="modal__close _modal-close" :theme="ButtonThemes.ROTATE" @click="close"
           ><UiSvgIcon><CloseIcon /></UiSvgIcon
         ></UiButton>
       </div>
@@ -70,35 +70,15 @@ function close() {
 @use '@/styles/media' as *;
 
 .modal {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  z-index: var(--modal-z-index);
   &__overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: var(--modal-bg-overlay);
   }
   &__inner {
-    position: absolute;
-    background-color: var(--primary-color-inverted);
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    height: 80%;
     @include adaptiveValue('padding-top', 30, 30);
     @include adaptiveValue('padding-bottom', 35, 35);
     @include adaptiveValue('padding-left', 44, 10, 1470, 768, 1);
     @include adaptiveValue('padding-right', 44, 10, 1470, 768, 1);
     display: flex;
     flex-direction: column;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     @media (min-width: $md2) {
       width: 80%;
 
@@ -120,10 +100,6 @@ function close() {
     padding-right: 30px;
   }
   &__close {
-    position: absolute;
-    right: 15px;
-    top: 15px;
-    z-index: var(--base-z-index);
   }
   &__view {
     position: relative;

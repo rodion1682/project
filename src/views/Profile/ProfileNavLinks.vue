@@ -67,10 +67,18 @@ const props = defineProps({
 .links {
   border-radius: var(--border-radius);
   background-color: var(--bg-secondary-color);
-  padding: 6px 20px;
+  @include adaptiveValue('padding-top', 6, 0);
+  @include adaptiveValue('padding-left', 20, 0);
+  @include adaptiveValue('padding-bottom', 6, 5);
+  @include adaptiveValue('padding-right', 20, 0);
   display: flex;
   gap: 10px;
+  overflow-x: auto !important;
+  white-space: nowrap;
   &__item {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
     &_active {
       background-color: var(--sixth-color);
       color: var(--secondary-color-inverted);

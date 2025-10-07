@@ -65,6 +65,7 @@ function onSubmitCustomAmount(values) {
     amount.value = values.amount
     topUpModalStore.setStep(2)
     topUpModalStore.openModal()
+    console.log('topUpModalStore', topUpModalStore)
   } else {
     router.push('/sing-in')
   }

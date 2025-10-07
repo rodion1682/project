@@ -118,8 +118,8 @@ function onSubmitCustomAmount(values) {
   }
   &__icon {
     background-color: var(--seventh-color);
-    min-width: 103px;
-    min-height: 103px;
+    @include adaptiveValue('min-width', 103, 40);
+    @include adaptiveValue('min-height', 103, 40);
     border-radius: 50%;
     overflow: hidden;
     position: relative;
@@ -131,6 +131,8 @@ function onSubmitCustomAmount(values) {
       width: 43px;
       height: 43px;
       fill: var(--sixth-color);
+      @include adaptiveValue('width', 43, 23);
+      @include adaptiveValue('height', 43, 23);
     }
   }
   &__about {

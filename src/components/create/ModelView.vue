@@ -8,6 +8,8 @@ import * as yup from 'yup'
 import GeneratingModal from '@/components/GeneratingModal.vue'
 import ReadyModal from '@/components/ReadyModal.vue'
 import { useSettingsStore } from '@/stores/settings.js'
+import UiButton, { ButtonThemes } from '../shared/UiButton.vue'
+import UiText, { TextAlign, TextTheme, TextWeight } from '../shared/UiText.vue'
 
 const modelStore = useModelGeneratorStore()
 const settingsStore = useSettingsStore()
@@ -168,80 +170,78 @@ const onSubmit = handleSubmit(async (values) => {
 </script>
 
 <template>
-  <div class="create-center">
-    <form @submit.prevent="onSubmit" class="bar">
-      <div class="tabs flex mb-4">
-        <button
-          type="button"
-          class="tab-button text-inter"
+  <div class="create">
+    <form @submit.prevent="onSubmit" class="create__form">
+      <div class="create__tab">
+        <UiButton
+          class="create__button _button_primary"
           :class="{ active: generationType === 'text-to-model' }"
           @click="modelStore.generationType = 'text-to-model'"
         >
           {{ $t('Text to 3D') }}
-        </button>
-        <button
-          type="button"
-          class="tab-button text-inter"
+        </UiButton>
+        <UiButton
+          class="create__button _button_primary"
           :class="{ active: generationType === 'image-to-model' }"
           @click="modelStore.generationType = 'image-to-model'"
         >
           {{ $t('Image to 3D') }}
-        </button>
+        </UiButton>
       </div>
-      <div class="coub-text flex items-center">
-        <img alt="coub icon" class="img" src="@/assets/imgs/btn-generate-icon-white.svg" />
-        <div class="text text-14 text-inter">
-          <b>{{ $t('Generate 3D model') }}</b>
+      <div class="create__generate">
+        <div class="create__image _ibg-contain">
+          <img src="@/static/images/icons/cube.png" />
         </div>
+        <UiText class="create__text" :weight="TextWeight.BOLD" :text="$t('Generate 3D model')" />
       </div>
-      <!-- TEXT-TO-MODEL MODE -->
       <template v-if="generationType === 'text-to-model'">
-        <div class="label-text text text-14 text-inter text-gray">{{ $t('Description') }}:</div>
-        <label class="label textarea-label">
-          <div class="textarea-container" :class="{ disabled: isDisabled }">
+        <UiText class="create__description" :text="$t('Description')" />
+        <label class="create__textarea textarea">
+          <div class="textarea__container" :class="{ disabled: isDisabled }">
             <textarea
               :disabled="isDisabled"
               v-model="currentPrompt"
               :placeholder="$t('Describe your model... e.g. “a robot painting a sunset”')"
               maxlength="300"
             ></textarea>
-
-            <div class="text text-10 text-gray text-inter symbol-count">
-              {{ currentPrompt.length }}/300
-            </div>
+            <UiText class="textarea__text" :text="`${currentPrompt.length}/300`" />
           </div>
-          <div v-if="promptError" class="text text-12 text-error text-red">{{ promptError }}</div>
+          <UiText
+            v-if="promptError"
+            class="textarea__error"
+            :theme="TextTheme.ERROR"
+            :text="promptError"
+          />
         </label>
-
-        <!-- Art Style -->
-        <div class="label size-label">
-          <div class="label-text text text-14 text-inter">
-            <b>{{ $t('Art style') }}:</b>
-          </div>
-          <div class="size-list flex justify-around">
-            <label>
+        <div class="create__item item">
+          <UiText
+            class="item__title"
+            :weight="TextWeight.BOLD"
+            :align="TextAlign.CENTER"
+            :text="$t('Art style')"
+          />
+          <div class="item__list">
+            <label class="item__label">
               <input
+                class="item__input"
                 :disabled="isDisabled"
                 type="radio"
                 value="realistic"
                 v-model="currentArtStyle"
                 name="artStyle"
               />
-              <div class="text text-14 text-inter text-gray">
-                <b>{{ $t('Realistic') }}</b>
-              </div>
+              <div class="item__text">{{ $t('Realistic') }}</div>
             </label>
-            <label>
+            <label class="item__label">
               <input
+                class="item__input"
                 :disabled="isDisabled"
                 type="radio"
                 value="sculpture"
                 v-model="currentArtStyle"
                 name="artStyle"
               />
-              <div class="text text-14 text-inter text-gray">
-                <b>{{ $t('Sculpture') }}</b>
-              </div>
+              <div class="item__text">{{ $t('Sculpture') }}</div>
             </label>
           </div>
         </div>
@@ -249,28 +249,33 @@ const onSubmit = handleSubmit(async (values) => {
 
       <!-- IMAGE-TO-MODEL MODE -->
       <template v-if="generationType === 'image-to-model'">
-        <div class="label upload-label">
-          <div class="label-text text text-14 text-inter text-gray">
-            {{ $t('Add your image') }}:
-          </div>
-          <label class="upload-container">
+        <div class="create__upload upload">
+          <UiText class="upload__text" :weight="TextWeight.BOLD" :text="$t('Add your image')" />
+          <label class="upload__container">
             <input type="file" @change="onFileChange" />
-            <div class="upload flex items-center justify-center">
-              <div class="text text-12 text-inter">
-                {{ $t('Supported formats: .png, .jpg, .jpeg.') }}
-              </div>
-            </div>
-            <div v-if="imageError" class="text text-12 text-error text-red">{{ imageError }}</div>
+            <UiText
+              class="upload__about"
+              :theme="TextTheme.SECONDARY"
+              :text="$t('Supported formats: .png, .jpg, .jpeg.')"
+            />
+            <UiText
+              v-if="imageError"
+              class="upload__error"
+              :theme="TextTheme.ERROR"
+              :text="imageError"
+            />
           </label>
-          <div v-if="imageUrl" class="image-preview-wrapper mt-4 relative">
-            <img :src="imageUrl" alt="Preview" class="image-preview rounded" />
-            <button type="button" class="remove-preview" @click="removeImage">×</button>
+          <div v-if="imageUrl" class="upload__preview">
+            <div class="upload__image _ibg-contain">
+              <img :src="imageUrl" />
+            </div>
+            <UiButton class="upload__remove" @click="removeImage">×</UiButton>
           </div>
         </div>
       </template>
 
       <!-- Symmetry (always shown in both modes) -->
-      <div class="label size-label">
+      <!--<div class="label size-label">
         <div class="label-text text text-14 text-inter">
           <b>{{ $t('Symmetry') }}:</b>
         </div>
@@ -306,10 +311,10 @@ const onSubmit = handleSubmit(async (values) => {
             <div class="text text-14 text-inter">On</div>
           </label>
         </div>
-      </div>
+      </div>-->
 
       <!-- Total and Submit -->
-      <div class="total-container flex justify-between items-center">
+      <!--<div class="total-container flex justify-between items-center">
         <div class="total flex items-center justify-center">
           <div class="text text-14 text-inter">
             <b>{{ $t('1 min') }}</b>
@@ -329,11 +334,11 @@ const onSubmit = handleSubmit(async (values) => {
         >
           <span>{{ isRefineMode && generationTypeSame ? $t('Refine') : $t('Generate') }}</span>
         </button>
-      </div>
+      </div>-->
 
-      <div v-if="error" class="text text-12 text-error text-red mt-2 text-center">
+      <!--<div v-if="error" class="text text-12 text-error text-red mt-2 text-center">
         {{ error }}
-      </div>
+      </div>-->
 
       <!--      <div v-if="profileStore.profile.balance === 0" class="buy-more flex items-center justify-center">-->
       <!--        <div class="text text-16 text-inter weight-500">-->
@@ -354,75 +359,169 @@ const onSubmit = handleSubmit(async (values) => {
   </div>
 </template>
 
-<style scoped>
-.tabs {
-  display: flex;
-  margin-bottom: 26px;
-  padding: 4px;
-  background: #39393a;
-  border-radius: 10px;
+<style lang="scss" scoped>
+@use '@/styles/mixins' as *;
+@use '@/styles/media' as *;
+@use '@/styles/classes' as *;
+
+.create {
+  padding: 15px;
+  background-color: var(--bg-secondary-color);
+  border-radius: var(--border-radius);
+  @media (max-width: $md3) {
+    padding: 15px 10px;
+  }
+  &__form {
+  }
+  &__tab {
+    display: flex;
+    background-color: var(--bg-primary-color);
+    width: fit-content;
+    border-radius: var(--border-radius);
+    gap: 10px;
+  }
+  &__button {
+    background-color: var(--bg-primary-color);
+    color: var(--primary-color);
+    border-color: transparent;
+    &.active {
+      background-color: var(--bg-primary-color-inverted);
+      color: var(--primary-color-inverted);
+    }
+  }
+  &__generate {
+    display: flex;
+    justify-content: center;
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 10);
+    }
+  }
+  &__image {
+    width: 20px;
+    height: 20px;
+  }
+  &__text {
+  }
+  &__description {
+  }
+  &__textarea {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 10);
+    }
+  }
+  &__item {
+  }
+  &__upload {
+  }
 }
 
-.tab-button {
-  color: #89888c;
-  padding: 16px 20px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-weight: bold;
-  flex: 1;
-  border-radius: 8px;
-}
-
-.tab-button.active {
-  color: #131314;
-  background: linear-gradient(#f4f3fb, #adaaba);
-}
-
-.image-preview img {
-  max-width: 100%;
-  border-radius: 8px;
-  margin-top: 10px;
-}
-
-.upload-label {
+.textarea {
   display: flex;
   flex-direction: column;
-  align-items: center; /* центрируем контент по горизонтали */
-  margin-top: 20px; /* отступ сверху от файлового инпута */
+
+  &__container {
+    position: relative;
+    background-color: var(--bg-primary-color);
+    border: 1px solid var(--bg-fifth-color);
+    border-radius: var(--border-radius);
+    padding: 12px 14px;
+    transition:
+      border-color 0.2s ease-in-out,
+      box-shadow 0.2s ease-in-out;
+
+    &.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      resize: none;
+      border: none;
+      background: transparent;
+      outline: none;
+      color: var(--primary-color);
+      font-size: 14px;
+      line-height: 1.4;
+      font-family: var(--font-family-sans);
+      padding: 0;
+    }
+
+    textarea::placeholder {
+      color: var(--secondary-color);
+      font-family: var(--font-family-sans);
+    }
+    textarea:focus + .textarea__text,
+    &:focus-within {
+      border-color: var(--hint-color);
+    }
+  }
+
+  &__text {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    font-size: var(--font-size-xs);
+    color: var(--secondary-color);
+    pointer-events: none;
+  }
+
+  &__error {
+  }
 }
 
-.image-preview-wrapper {
-  position: relative;
-  border-radius: 12px; /* округление углов */
-  overflow: hidden;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin: 20px auto 0 auto;
+.item {
+  &__title {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 20, 10);
+    }
+  }
+  &__list {
+    display: flex;
+    align-items: center;
+    border-radius: var(--border-radius);
+    background-color: var(--bg-primary-color);
+    overflow: hidden;
+    gap: 5px;
+  }
+  &__label {
+    position: relative;
+    flex: 1 1 auto;
+    cursor: pointer;
+  }
+  &__input {
+    display: none;
+
+    &:checked + .item__text {
+      color: var(--primary-color-inverted);
+      background-color: var(--bg-primary-color-inverted);
+    }
+  }
+  &__text {
+    min-height: 40px;
+    padding: 8px 15px;
+    font-weight: 700;
+    font-family: var(--font-family-sans);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease 0s;
+  }
 }
 
-.image-preview {
-  max-height: 200px;
-  max-width: 100%;
-  object-fit: contain;
-  display: block;
-  border-radius: 12px; /* совпадает с рамкой */
-}
-
-/* Кнопка удаления по-прежнему в правом верхнем углу */
-.remove-preview {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background: rgba(0, 0, 0, 0.6);
-  border: none;
-  color: white;
-  font-size: 20px;
-  width: 28px;
-  height: 28px;
-  line-height: 26px;
-  border-radius: 50%;
-  cursor: pointer;
+.upload {
+  &__text {
+  }
+  &__container {
+  }
+  &__about {
+  }
+  &__error {
+  }
+  &__preview {
+  }
+  &__image {
+  }
+  &__remove {
+  }
 }
 </style>

@@ -14,14 +14,14 @@ const props = defineProps({
 
 <template>
   <Form
-    :class="['form', className]"
+    :class="['form', props.className]"
     v-slot="{ meta }"
-    :validation-schema="customAmountSchema"
-    @submit="onSubmitCustomAmount"
+    :validation-schema="props.customAmountSchema"
+    @submit="props.onSubmitCustomAmount"
   >
     <div class="form__inner">
       <UiText
-        v-if="title"
+        v-if="props.title"
         :size="TextSize.H4"
         :font="TextFont.RED"
         :weight="TextWeight.BOLD"
@@ -30,12 +30,11 @@ const props = defineProps({
         :title="$t('Custom Credits')"
       />
       <UiText
-        v-if="description"
+        v-if="props.description"
         :align="TextAlign.CENTER"
         class="form__description"
-        :title="description"
+        :title="props.description"
       />
-
       <div class="form__amount">
         <UiText
           class="price__amount-value"
@@ -57,7 +56,6 @@ const props = defineProps({
           <UiText class="form__creadits-text" :size="TextSize.L" text="credits" />
         </div>
       </div>
-
       <label class="form__input">
         <Field
           class="form__input-field _input"
@@ -71,7 +69,6 @@ const props = defineProps({
       </label>
       <ErrorMessage class="form__input-error" name="amount" />
     </div>
-
     <UiButton
       class="form__button"
       :disabled="!meta.valid || !meta.touched"
@@ -98,6 +95,18 @@ const props = defineProps({
   @include adaptiveValue('padding-bottom', 30, 15, 1470, 992, 1);
   display: flex;
   flex-direction: column;
+  flex: 0 1 25%;
+  @media (max-width: $md2) {
+    flex: 0 1 calc(50% - 5px);
+  }
+  @media (max-width: $md3) {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  @media (max-width: $md4) {
+    padding-top: 15px;
+    flex: 1 1 100%;
+  }
   &__inner {
     flex: 1 1 auto;
     &:not(:last-child) {
@@ -140,6 +149,12 @@ const props = defineProps({
     position: relative;
     display: flex;
     justify-content: center;
+    max-width: 220px;
+    margin-left: auto;
+    margin-right: auto;
+    @media (max-width: $md4) {
+      max-width: 300px;
+    }
     &-field {
       padding-right: 45px;
     }
@@ -159,6 +174,13 @@ const props = defineProps({
     }
   }
   &__button {
+    max-width: 220px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    @media (max-width: $md4) {
+      max-width: 300px;
+    }
   }
 }
 </style>

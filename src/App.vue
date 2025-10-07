@@ -90,8 +90,6 @@ watch(
 onMounted(() => {
   const cookiesAccepted = localStorage.getItem('cookiesAccepted')
 
-  console.log(route, 'route')
-
   if (!cookiesAccepted) {
     cookiesModalStore.openModal()
   }
@@ -127,7 +125,9 @@ onMounted(() => {
 <template>
   <div class="page">
     <HeaderView />
-    <RouterView />
+    <div class="page__content">
+      <RouterView />
+    </div>
     <FooterView />
     <!--<Transition>
       <LoginModal v-if="loginModalStore.isModalOpen" />
@@ -137,10 +137,11 @@ onMounted(() => {
     </Transition>
     <Transition>
       <RecoverModal v-if="recoverModalStore.isModalOpen" />
-    </Transition>
+    </Transition>-->
     <Transition>
       <TopUpModal v-if="topUpModalStore.isModalOpen" />
     </Transition>
+    <!--
     <Transition>
       <CookiesModal />
     </Transition>
