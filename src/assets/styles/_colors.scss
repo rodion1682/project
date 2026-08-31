@@ -1,0 +1,47 @@
+:root {
+  --primary-color: #ffffff;
+  // #FFFFFF 60%
+  --secondary-color: rgb(255, 255, 255, 0.6);
+  // #FFFFFF 50%
+  --third-color: rgb(255, 255, 255, 0.5);
+  // #B39A6B 60%
+  --fourth-color: rgb(179, 154, 107, 0.6);
+
+  --bg-primary-color: #07080e;
+  --bg-secondary-color: #2c2c2b;
+  --bg-third-color: #1c1d1d;
+  // #1C1D1D 60%
+  --bg-fourth-color: rgb(28, 29, 29, 0.6);
+  --bg-fifth-color: #1e1e1e;
+
+  --border-priamry-color: #b39a6b;
+  // #B39A6B 30%
+  --border-secondary-color: rgb(179, 154, 107, 0.3);
+  // #FFFFFF 20%
+  --border-third-color: rgb(255, 255, 255, 0.2);
+  // #FFFFFF 10%
+  --border-fourth-color: rgb(255, 255, 255, 0.1);
+
+  --hint-primary-color: #b39a6b;
+  --hint-secondary-color: #2ecfc4;
+  --hint-third-color: #008897;
+
+  --hint-gradient: linear-gradient(
+    90deg,
+    #795d32 0%,
+    #ddc694 49%,
+    #795d32 100%
+  );
+
+  --accent-gradient: linear-gradient(45deg, #2ecfc4 0%, #008897 100%);
+  --slider-thumb-gradient: linear-gradient(90deg, #795d32 0%, #ddc694 100%);
+
+  --slider-thumb-border-gradient: linear-gradient(
+    90deg,
+    #795d32 0%,
+    #ddc694 49%,
+    #795d32 100%
+  );
+
+  --error-color: #ee3955;
+}
