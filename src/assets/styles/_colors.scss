@@ -1,0 +1,67 @@
+:root {
+  // text
+  --test: #1156d6;
+
+  // text colors
+
+  --primary-color: #0f1b2d;
+  --seconday-color: #5a7089;
+  --third-color: #5f7288;
+  --light-color: #ffffff;
+  --muted-color: #54677f;
+
+  // background colors
+
+  --bg-primary-color: #e9f1fa;
+  --bg-secondary-color: #ffffff;
+  --bg-third-color: #e7effc;
+  --bg-fourth-color: #cfdff9;
+  --bg-fifth-color: #a9c5f4;
+  --bg-sixth-color: #0b1522;
+  --bg-seventh-color: #24384f;
+  --bg-eight-color: #3d5470;
+  --bg-ninth-color: #072459;
+  --bg-tenth-color: #f2f7fd;
+  
+  
+  // brand / accent colors
+  --hint-primary-color: #1156d6;
+  --accent-light-color: #4a80e6;
+  --accent-dark-color: #0e46ac;
+  --accent-darker-color: #0b3583;
+  --accent-soft-color: #9dbdf0;
+
+  // border colors
+
+  --border-primary-color: #ccdcec;
+  --border-secondary-color: #a9c5f4;
+  --border-dark-color: #3d5470;
+
+  // additional interface colors
+  --yellow-color: #ffcc33;
+  --cyan-color: #38b0e3;
+  --teal-color: #0d7fa8;
+  --orange-color: #c53a13;
+
+  // status colors
+
+  --pending-color: #ffcc33;
+  --error-color: #c53a13;
+  --success-color: #0d7fa8;
+
+  // overlays / transparent backgrounds
+
+  --white-bg-96: #{rgba(#ffffff, 0.96)};
+  --white-bg-95: #{rgba(#ffffff, 0.95)};
+  --white-bg-90: #{rgba(#ffffff, 0.9)};
+  --white-bg-75: #{rgba(#ffffff, 0.75)};
+  --white-bg-72: #{rgba(#ffffff, 0.72)};
+  --white-bg-35: #{rgba(#ffffff, 0.35)};
+  --white-bg-30: #{rgba(#ffffff, 0.3)};
+  --white-bg-20: #{rgba(#ffffff, 0.2)};
+
+  --accent-bg-color: #{rgba(#1156d6, 0.55)};
+  --page-overlay-color: #{rgba(#e9f1fa, 0.94)};
+  --page-overlay-light-color: #{rgba(#e9f1fa, 0.45)};
+  --dark-overlay-color: #{rgba(#000000, 0.5)};
+}

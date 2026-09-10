@@ -1,0 +1,54 @@
+@use '_mixins.scss' as *;
+
+:root {
+  --font-open-sans: 'Open Sans', sans-serif;
+
+  --font-gabarito: 'Gabarito', sans-serif;
+
+  --font-inter: 'Inter', sans-serif;
+}
+
+._h1,
+._h2,
+._h3,
+._h4,
+._h5,
+._h6 {
+  font-family: var(--font-gabarito);
+  font-weight: 900;
+  letter-spacing: -1.16px;
+  color: var(--primary-color);
+  span {
+    color: var(--orange-color);
+  }
+}
+._h1 {
+  @include adaptiveValue('font-size', 58, 38);
+  @include adaptiveValue('line-height', 58, 38);
+}
+
+._h2 {
+  @include adaptiveValue('font-size', 46, 26);
+  @include adaptiveValue('line-height', 55, 32);
+}
+
+._h3 {
+  @include adaptiveValue('font-size', 44, 26);
+  @include adaptiveValue('line-height', 55, 32);
+}
+
+._h4 {
+  @include adaptiveValue('font-size', 38, 26);
+  @include adaptiveValue('line-height', 55, 32);
+}
+
+._h5 {
+  @include adaptiveValue('font-size', 38, 26);
+  @include adaptiveValue('line-height', 55, 32);
+}
+
+._h6 {
+  letter-spacing: 0px;
+  @include adaptiveValue('font-size', 21, 18);
+  @include adaptiveValue('line-height', 25, 22);
+}

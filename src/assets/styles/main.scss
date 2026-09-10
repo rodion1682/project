@@ -1,0 +1,52 @@
+@use 'reset';
+@use 'classes';
+@use 'colors';
+@use 'fonts';
+@use 'variables';
+@use 'media';
+@use 'mixins';
+
+body {
+  font-size: 16px;
+  line-height: 160%;
+  font-weight: 400;
+  overflow-x: hidden !important;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-primary-color);
+  color: var(--muted-color);
+  font-family: var(--font-open-sans);
+}
+:root {
+  --vueuse-safe-area-top: 0px !important;
+  --vueuse-safe-area-right: 0px !important;
+  --vueuse-safe-area-bottom: 0px !important;
+  --vueuse-safe-area-left: 0px !important;
+}
+
+html {
+}
+
+#app {
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
