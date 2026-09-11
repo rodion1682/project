@@ -1,14 +1,5 @@
 <script setup>
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  toRefs,
-  watch,
-  watchEffect,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRefs, watch } from 'vue'
 
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -21,14 +12,13 @@ import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 import { FavoriteIcon } from '@/components/ui/icons'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
-import ProductListItem from './ProductPages/components/ProductListItem.vue'
-
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { useLoginModalStore } from '@/stores/loginModal'
 import { useWishListStore } from '@/stores/wishlist'
+import ProductListItem from '../ProductPages/components/ProductListItem.vue'
 
 const props = defineProps({
   platform: {
@@ -296,7 +286,7 @@ const fetchGame = async () => {
   const productId = game.value
   const currency = currStore.currency?.code
 
-  if (!productId || !currency) {
+  if (!productId || !currency || isGameLoading.value) {
     return
   }
 
@@ -309,9 +299,7 @@ const fetchGame = async () => {
       },
     })
 
-    const product = res.data?.data ?? res.data?.payload ?? res.data ?? null
-
-    activeGame.value = product
+    activeGame.value = res.data?.data ?? res.data?.payload ?? res.data ?? null
 
     isDescriptionExpanded.value = false
 
@@ -331,7 +319,7 @@ const fetchSimilar = async () => {
 
   const categoryId = currentCategory.value?.id
 
-  if (!currency || !categoryId) {
+  if (!currency || !categoryId || isSimilarLoading.value) {
     return
   }
 
@@ -388,16 +376,12 @@ const buyNow = async () => {
     return
   }
 
-  if (!activeGame.value?.id) {
+  if (!activeGame.value?.id || isCartLoading.value) {
     return
   }
 
   if (isInCart.value) {
     router.push('/cart')
-    return
-  }
-
-  if (isCartLoading.value) {
     return
   }
 
@@ -437,28 +421,45 @@ const toggleFavorite = async () => {
   }
 }
 
-watchEffect(() => {
-  const productId = game.value
-  const currency = currStore.currency?.code
+watch(
+  [() => game.value, () => currStore.currency?.code],
+  async ([productId, currency], oldValues) => {
+    if (!productId || !currency) {
+      return
+    }
 
-  if (!productId || !currency) {
-    return
-  }
+    const [oldProductId, oldCurrency] = oldValues || []
 
-  fetchGame()
-})
+    if (activeGame.value && productId === oldProductId && currency === oldCurrency) {
+      return
+    }
 
-watchEffect(() => {
-  const currency = currStore.currency?.code
+    await fetchGame()
+  },
+  {
+    immediate: true,
+  },
+)
 
-  const categoryId = currentCategory.value?.id
+watch(
+  [() => currentCategory.value?.id, () => currStore.currency?.code],
+  async ([categoryId, currency], oldValues) => {
+    if (!categoryId || !currency) {
+      return
+    }
 
-  if (!currency || !categoryId) {
-    return
-  }
+    const [oldCategoryId, oldCurrency] = oldValues || []
 
-  fetchSimilar()
-})
+    if (similar.value.length && categoryId === oldCategoryId && currency === oldCurrency) {
+      return
+    }
+
+    await fetchSimilar()
+  },
+  {
+    immediate: true,
+  },
+)
 
 watch(
   () => [activeGame.value?.description_html, activeGame.value?.description],
@@ -470,16 +471,8 @@ watch(
   },
 )
 
-onMounted(async () => {
+onMounted(() => {
   window.addEventListener('resize', handleDescriptionResize)
-
-  await nextTick()
-
-  if (game.value && currStore.currency?.code && !activeGame.value) {
-    await fetchGame()
-  }
-
-  await updateDescriptionHeight()
 })
 
 onBeforeUnmount(() => {
@@ -1246,14 +1239,16 @@ onBeforeUnmount(() => {
     @media (max-width: $md3) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      &:last-child {
-        @include hide-item;
-      }
     }
   }
 
   &__item {
     min-width: 0;
+    @media (max-width: $md3) {
+      &:last-child {
+        @include hide-item;
+      }
+    }
   }
 }
 </style>

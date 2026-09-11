@@ -1,4 +1,7 @@
 <script setup>
+import { onMounted, watch } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
+
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useCategoriesStore } from '@/stores/categories'
@@ -15,9 +18,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useSocialsStore } from '@/stores/socials'
 import { useStaticStore } from '@/stores/static'
 import { useTopUpModalStore } from '@/stores/topUpModal'
-import { useWishListStore } from '@/stores/wishlist'
-import { onMounted, watch, watchEffect } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+
 import CookiesModal from './components/CookiesModal.vue'
 import FooterView from './components/layout/FooterView.vue'
 import HeaderView from './components/layout/HeaderView.vue'
@@ -26,9 +27,9 @@ import RecoverModal from './components/RecoverModal.vue'
 import RegModal from './components/RegModal.vue'
 import TopUpModal from './components/TopUpModal.vue'
 
-const globalStore = useGlobalStore()
+const router = useRouter()
 
-const wishListStore = useWishListStore()
+const globalStore = useGlobalStore()
 const menuStore = useMenuStore()
 const loginModalStore = useLoginModalStore()
 const regModalStore = useRegModalStore()
@@ -45,14 +46,32 @@ const cartStore = useCartStore()
 const profileStore = useProfileStore()
 const cookiesModalStore = useCookiesModalStore()
 
-const router = useRouter()
 watch(
-  () => router.currentRoute.value,
+  () => router.currentRoute.value.fullPath,
   () => {
-    window.scrollTo(0, 0)
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    })
+
     menuStore.closeMenu()
     regModalStore.closeModal()
     topUpModalStore.closeModal()
+  },
+)
+
+watch(
+  [() => currStore.currency?.code, () => authStore.isAuth],
+  async ([currencyCode, isAuth]) => {
+    if (!currencyCode || !isAuth) {
+      return
+    }
+
+    await Promise.all([cartStore.getCart(), profileStore.getProfile()])
+  },
+  {
+    immediate: true,
   },
 )
 
@@ -71,36 +90,35 @@ onMounted(() => {
   staticStore.getStatic()
   countriesStore.getCountries()
   categoriesStore.getCategories()
-
-  watchEffect(() => {
-    if (Object.keys(currStore.currency).length !== 0 && authStore.isAuth) {
-      cartStore.getCart()
-      profileStore.getProfile()
-      wishListStore.get()
-    }
-  })
 })
 </script>
 
 <template>
-  <div :class="'page page_' + router.currentRoute.value.name">
+  <div :class="['page', `page_${router.currentRoute.value.name}`]">
     <HeaderView />
+
     <div class="page__content">
       <RouterView />
     </div>
+
     <FooterView />
+
     <Transition>
       <LoginModal v-if="loginModalStore.isModalOpen" />
     </Transition>
+
     <Transition>
       <RegModal v-if="regModalStore.isModalOpen" />
     </Transition>
+
     <Transition>
       <RecoverModal v-if="recoverModalStore.isModalOpen" />
     </Transition>
+
     <Transition>
       <TopUpModal v-if="topUpModalStore.isModalOpen" />
     </Transition>
+
     <Transition>
       <CookiesModal v-if="cookiesModalStore.isModalOpen" />
     </Transition>
@@ -112,6 +130,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   flex: 1 1 100%;
+
   &__content {
     display: flex;
     flex-direction: column;
