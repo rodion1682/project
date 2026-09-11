@@ -192,17 +192,11 @@ onBeforeUnmount(() => {
         </template>
       </BaseInput>
 
-      <LanguageSelector
-        data-da=".header__nav,767.98,first"
-        class="header__select header__select_lang"
-      />
+      <LanguageSelector data-da=".header__nav,767.98" class="header__select header__select_lang" />
 
-      <CurrencySelector
-        data-da=".header__nav,767.98,first"
-        class="header__select header__select_cur"
-      />
+      <CurrencySelector data-da=".header__nav,767.98" class="header__select header__select_cur" />
 
-      <div v-show="authStore.isAuth && profileStore.profile" class="header__auth auth">
+      <div v-show="authStore.isAuth" class="header__auth auth">
         <RouterLink to="/profile/balance" class="auth__link auth__link_balance">
           <div class="auth__link-price">
             {{ profileStore.profile.balanceInCurrency }}
@@ -211,6 +205,7 @@ onBeforeUnmount(() => {
         </RouterLink>
 
         <RouterLink
+          v-show="authStore.isAuth"
           data-da=".header__nav,479.98,first"
           to="/wish-list"
           class="auth__link auth__link_favorite"
@@ -225,7 +220,7 @@ onBeforeUnmount(() => {
           </div>
         </RouterLink>
 
-        <RouterLink to="/cart" class="auth__link">
+        <RouterLink v-show="authStore.isAuth" to="/cart" class="auth__link">
           <SvgIcon :icon="CartIcon" class="auth__link-icon" />
 
           <div
@@ -237,6 +232,7 @@ onBeforeUnmount(() => {
         </RouterLink>
 
         <BaseButton
+          v-show="authStore.isAuth"
           variant="secondary"
           class="auth__profile"
           icon="profile"
@@ -248,12 +244,13 @@ onBeforeUnmount(() => {
         </BaseButton>
       </div>
 
-      <div v-if="!authStore.isAuth" class="header__auth auth">
+      <div v-show="!authStore.isAuth" class="header__auth auth">
         <BaseButton class="auth__button auth__button_in" @click="loginModalStore.openModal">
           {{ $t('Sign In') }}
         </BaseButton>
 
         <BaseButton
+          data-da=".header__nav,767.98"
           class="auth__button auth__button_up"
           variant="secondary"
           @click="regModalStore.openModal"
@@ -298,7 +295,6 @@ onBeforeUnmount(() => {
   top: 0;
   right: 0;
   left: 0;
-
   max-width: 100vw;
   min-width: 320px;
   width: 100%;
@@ -454,13 +450,21 @@ onBeforeUnmount(() => {
   }
 
   &__button {
-    min-width: 140px;
-    width: 100%;
-    white-space: nowrap;
     &_in {
+      min-width: 140px;
+      width: 100%;
+      white-space: nowrap;
+      @media (max-width: 374.98px) {
+        min-width: 120px;
+      }
     }
 
     &_up {
+      white-space: nowrap;
+      width: 100%;
+      @media (min-width: $md4) {
+        min-width: 140px;
+      }
     }
   }
 }

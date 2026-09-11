@@ -5,6 +5,9 @@ import ProductItem from '@/components/ProductItem.vue'
 import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { usePopularStore } from '@/stores/popular'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const categoriesStore = useCategoriesStore()
 const popularStore = usePopularStore()
@@ -15,30 +18,30 @@ const featuredProducts = computed(() => {
     return []
   }
 
-  return popularStore.products.slice(0, 8)
+  return popularStore.products.slice(0, 12)
 })
 
 const linkConfig = [
   {
-    title: 'All',
+    title: t('All'),
     search: null,
     slug: 'all/all',
     class: 'all',
   },
   {
-    title: 'PC',
+    title: t('PC'),
     search: ['pc', 'steam'],
   },
   {
-    title: 'Xbox',
+    title: t('Xbox'),
     search: ['xbox'],
   },
   {
-    title: 'Nintendo',
+    title: t('Nintendo'),
     search: ['nintendo'],
   },
   {
-    title: 'Gift cards',
+    title: t('Gift cards'),
     search: ['gift card', 'gift'],
   },
 ]
@@ -130,21 +133,28 @@ watch(
 .featured {
   position: relative;
   z-index: 1;
-  @include adaptiveValue('margin-top', -85, -62);
+  @include adaptiveValue('margin-top', -85, 0);
   &__container {
   }
 
   &__top {
-    display: flex;
-    gap: 20px;
-    justify-content: space-between;
-    align-items: center;
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 55, 20);
+    }
+    @media (min-width: $md5) {
+      display: flex;
+      gap: 20px;
+      justify-content: space-between;
+      align-items: center;
     }
   }
 
   &__title {
+    @media (max-width: $md5) {
+      &:not(:last-child) {
+        margin-bottom: 14px;
+      }
+    }
   }
 
   &__links {
@@ -194,15 +204,28 @@ watch(
   &__items {
     display: flex;
     flex-wrap: wrap;
-    @include adaptiveValue('margin-left', -11, -6);
-    @include adaptiveValue('margin-right', -11, -6);
-    @include adaptiveValue('row-gap', 22, 12);
+    @include adaptiveValue('margin-left', -11, -7);
+    @include adaptiveValue('margin-right', -11, -7);
+    @include adaptiveValue('row-gap', 22, 14);
   }
 
   &__item {
-    flex: 0 1 25%;
-    @include adaptiveValue('padding-left', 12, 6);
-    @include adaptiveValue('padding-right', 12, 6);
+    flex: 0 1 16.666%;
+    overflow: hidden;
+    @include adaptiveValue('padding-left', 12, 7);
+    @include adaptiveValue('padding-right', 12, 7);
+    @media (max-width: $md2) {
+      flex: 0 1 20%;
+    }
+    @media (max-width: 1199.98px) {
+      flex: 0 1 25%;
+    }
+    @media (max-width: $md3) {
+      flex: 0 1 33.333%;
+    }
+    @media (max-width: $md5) {
+      flex: 0 1 50%;
+    }
   }
 }
 </style>

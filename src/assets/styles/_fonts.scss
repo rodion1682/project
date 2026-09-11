@@ -13,7 +13,8 @@
 ._h3,
 ._h4,
 ._h5,
-._h6 {
+._h6,
+._h7 {
   font-family: var(--font-gabarito);
   font-weight: 900;
   letter-spacing: -1.16px;
@@ -43,11 +44,18 @@
 }
 
 ._h5 {
-  @include adaptiveValue('font-size', 38, 26);
-  @include adaptiveValue('line-height', 55, 32);
+  letter-spacing: -0.3px;
+  @include adaptiveValue('font-size', 30, 20);
+  @include adaptiveValue('line-height', 36, 27);
 }
 
 ._h6 {
+  letter-spacing: 0px;
+  @include adaptiveValue('font-size', 24, 16);
+  @include adaptiveValue('line-height', 29, 20);
+}
+
+._h7 {
   letter-spacing: 0px;
   @include adaptiveValue('font-size', 21, 18);
   @include adaptiveValue('line-height', 25, 22);

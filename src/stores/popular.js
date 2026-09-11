@@ -1,21 +1,46 @@
-import { defineStore } from 'pinia'
 import { useCurrStore } from '@/stores/currencies'
+import { defineStore } from 'pinia'
 
 import axios from '@/plugins/axios'
+
 export const usePopularStore = defineStore('popular', {
   state: () => ({
-    products: false,
+    products: [],
+    deal: null,
   }),
+
   actions: {
-    getProducts() {
+    async getProducts() {
       const currStore = useCurrStore()
-      axios
-        .get('catalog/popular', {
-          params: { currency: currStore.currency.code },
+
+      try {
+        const res = await axios.get('catalog/popular', {
+          params: {
+            currency: currStore.currency.code,
+          },
         })
-        .then((res) => {
-          this.products = res.data.data
+
+        this.products = res.data.data || []
+      } catch (error) {
+        this.products = []
+      }
+    },
+
+    async getDeal() {
+      const currStore = useCurrStore()
+
+      try {
+        const res = await axios.get('catalog/popular', {
+          params: {
+            currency: currStore.currency.code,
+            page_size: 1,
+          },
         })
+
+        this.deal = res.data.data?.[0] || null
+      } catch (error) {
+        this.deal = null
+      }
     },
   },
 })

@@ -30,7 +30,7 @@ defineOptions({
 })
 
 const props = defineProps({
-  variant: { type: String, default: 'primary' }, // primary | secondary | link
+  variant: { type: String, default: 'primary' }, // primary | secondary | link | bordered | white | transaprent | dark-secondary
   // disabled: { type: Boolean, default: false },
   active: { type: Boolean, default: false },
   class: { type: [String, Array, Object], default: '' },
@@ -67,6 +67,7 @@ const buttonClasses = computed(() => [
   box-shadow: transparent 4px 4px 0px;
   height: fit-content;
   min-height: 45px;
+  border: 2px solid transparent;
   &:disabled {
     opacity: 0.5;
     pointer-events: none;
@@ -83,6 +84,7 @@ const buttonClasses = computed(() => [
       }
     }
   }
+  &.dark-secondary,
   &.secondary {
     color: var(--light-color);
     box-shadow: var(--yellow-color) 4px 4px 0px;
@@ -95,6 +97,9 @@ const buttonClasses = computed(() => [
       }
     }
   }
+  &.dark-secondary {
+    box-shadow: var(--primary-color) 4px 4px 0px;
+  }
   &.link {
     color: var(--hint-primary-color);
     background-color: transparent;
@@ -103,6 +108,43 @@ const buttonClasses = computed(() => [
     @media (any-hover: hover) {
       &:hover {
         background-color: var(--bg-primary-color);
+      }
+    }
+  }
+  &.bordered {
+    background-color: transparent;
+    color: var(--seconday-color);
+    border-color: var(--border-primary-color);
+    @media (any-hover: hover) {
+      &:hover {
+        color: var(--light-color);
+        box-shadow: var(--yellow-color) 4px 4px 0px;
+        background-color: var(--hint-primary-color);
+      }
+    }
+  }
+  &.white {
+    background-color: transparent;
+    color: var(--light-color);
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: var(--yellow-color);
+        box-shadow: var(--hint-primary-color) 4px 4px 0px;
+        color: var(--primary-color);
+      }
+    }
+    @media (max-width: $md8) {
+      color: var(--light-color);
+      box-shadow: var(--primary-color) 4px 4px 0px;
+      background-color: var(--hint-primary-color);
+    }
+  }
+  &.transaprent {
+    background-color: transparent;
+    color: var(--primary-color);
+    @media (any-hover: hover) {
+      &:hover {
+        color: var(--hint-primary-color);
       }
     }
   }

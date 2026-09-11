@@ -1,78 +1,102 @@
 <script setup>
-import icon1 from '@/assets/icons/advantages/1.svg'
-import icon2 from '@/assets/icons/advantages/2.svg'
-import icon3 from '@/assets/icons/advantages/3.svg'
-import icon4 from '@/assets/icons/advantages/4.svg'
-import icon5 from '@/assets/icons/advantages/5.svg'
-import { useAuthStore } from '@/stores/auth'
-import { useCategoriesStore } from '@/stores/categories'
-import { useCurrStore } from '@/stores/currencies'
-import { usePopularStore } from '@/stores/popular'
-import { useRegModalStore } from '@/stores/regModal'
-import { useSettingsStore } from '@/stores/settings'
 import '@splidejs/splide/dist/css/splide.min.css'
-import { onMounted, watchEffect } from 'vue'
 import FeaturedSection from './components/FeaturedSection.vue'
 import HeroSection from './components/HeroSection.vue'
-const categoriesStore = useCategoriesStore()
-const settingsStore = useSettingsStore()
-
-const popularStore = usePopularStore()
-const regModalStore = useRegModalStore()
-const currStore = useCurrStore()
-const authStore = useAuthStore()
-
-const options = {
-  pagination: false,
-  loop: false,
-  arrows: true,
-  gap: 24,
-  perPage: 5,
-  breakpoints: {
-    768: {
-      autoWidth: true,
-    },
-  },
-}
-
-const advantages = [
-  {
-    title: 'Wide Selection',
-    desc: 'A vast array of games for all platforms: PC, Xbox, PlayStation, and Nintendo.',
-    icon: icon1,
-  },
-  {
-    title: 'Instant Delivery',
-    desc: 'Receive your keys and cards immediately after purchase.',
-    icon: icon2,
-  },
-  {
-    title: 'Secure Transactions',
-    desc: 'Reliable payment systems and data protection.',
-    icon: icon3,
-  },
-  {
-    title: '24/7 Support',
-    desc: 'Our team is always ready to assist you anytime.',
-    icon: icon4,
-  },
-  {
-    title: 'Authenticity Guarantee',
-    desc: 'All keys and cards are official and verified.',
-    icon: icon5,
-  },
-]
-
-onMounted(() => {
-  watchEffect(() => {
-    if (currStore.currency.symbol) {
-      popularStore.getProducts()
-    }
-  })
-})
+import LauncherSection from './components/LauncherSection.vue'
+import PlatformSection from './components/PlatformSection.vue'
+import SetUpSection from './components/SetUpSection.vue'
+import WhatMobSection from './components/WhatMobSection.vue'
+import WhySection from './components/WhySection.vue'
+import WorldMobSection from './components/WorldMobSection.vue'
 </script>
 
 <template>
-  <HeroSection />
-  <FeaturedSection />
+  <div class="home">
+    <div class="home__hero">
+      <HeroSection />
+    </div>
+    <div class="home__world">
+      <WorldMobSection />
+    </div>
+    <div class="home__featured">
+      <FeaturedSection />
+    </div>
+    <div class="home__platform">
+      <PlatformSection />
+    </div>
+    <div class="home__launcher">
+      <LauncherSection />
+    </div>
+    <div class="home__what">
+      <WhatMobSection />
+    </div>
+    <div class="home__why">
+      <WhySection />
+    </div>
+    <div class="home__set-up">
+      <SetUpSection />
+    </div>
+  </div>
 </template>
+
+<style scoped lang="scss">
+@use '@/assets/styles/mixins' as *;
+@use '@/assets/styles/media' as *;
+@use '@/assets/styles/classes' as *;
+
+.home {
+  @include header-indent;
+  display: flex;
+  flex-direction: column;
+  &__hero {
+    @media (max-width: $md8) {
+      order: 1;
+    }
+  }
+  &__world {
+    @media (min-width: $md8) {
+      @include hide-item;
+    }
+    @media (max-width: $md8) {
+      order: 2;
+    }
+  }
+  &__featured {
+    @media (max-width: $md8) {
+      @include hide-item;
+    }
+  }
+
+  &__platform {
+    @media (max-width: $md8) {
+      order: 7;
+    }
+  }
+
+  &__launcher {
+    @media (max-width: $md8) {
+      order: 4;
+    }
+  }
+  &__what {
+    @media (min-width: $md8) {
+      @include hide-item;
+    }
+    @media (max-width: $md8) {
+      order: 5;
+    }
+  }
+
+  &__why {
+    @media (max-width: $md8) {
+      order: 3;
+    }
+  }
+
+  &__set-up {
+    @media (max-width: $md8) {
+      order: 6;
+    }
+  }
+}
+</style>
