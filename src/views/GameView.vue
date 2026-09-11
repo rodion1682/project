@@ -1,14 +1,46 @@
 <script setup>
+import { computed, onMounted, ref, toRefs, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+
+import axios from '@/plugins/axios'
+
+import BaseButton from '@/components/ui/BaseButton.vue'
+import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import PriceFormatter from '@/components/ui/PriceFormatter.vue'
+import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+
+import { FavoriteIcon } from '@/components/ui/icons'
+
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { useLoginModalStore } from '@/stores/loginModal'
 import { useWishListStore } from '@/stores/wishlist'
-import { onMounted, ref, toRefs, watchEffect } from 'vue'
-import ProductItem from '../components/ProductItem.vue'
+import ProductListItem from './ProductPages/components/ProductListItem.vue'
 
-import axios from '@/plugins/axios'
+const props = defineProps({
+  platform: {
+    type: String,
+    required: true,
+  },
+
+  category: {
+    type: String,
+    required: true,
+  },
+
+  game: {
+    type: String,
+    required: true,
+  },
+})
+
+const { platform, category, game } = toRefs(props)
+
+const { t } = useI18n()
+const router = useRouter()
 
 const categoriesStore = useCategoriesStore()
 const currStore = useCurrStore()
@@ -16,6 +48,12 @@ const authStore = useAuthStore()
 const loginModalStore = useLoginModalStore()
 const cartStore = useCartStore()
 const wishListStore = useWishListStore()
+
+const activeGame = ref(null)
+const similar = ref([])
+
+const isCartLoading = ref(false)
+const isFavoriteLoading = ref(false)
 
 const langCountryMap = {
   EN: 'gb',
@@ -53,273 +91,982 @@ const langCountryMap = {
   HE: 'il',
 }
 
-import esrbAdultsOnly from '@/assets/icons/esrb/adults_only.svg'
-import esrbEveryone from '@/assets/icons/esrb/everyone.svg'
-import esrbEveryone10 from '@/assets/icons/esrb/everyone10.svg'
-import esrbMature from '@/assets/icons/esrb/mature.svg'
-import esrbRatingPending from '@/assets/icons/esrb/rating_pending.svg'
-import esrbTeen from '@/assets/icons/esrb/teen.svg'
+const currentPlatform = computed(() => {
+  const platforms = Array.isArray(categoriesStore.platforms) ? categoriesStore.platforms : []
 
-const esrbIcons = {
-  EVERYONE: esrbEveryone,
-  'EVERYONE 10+': esrbEveryone10,
-  TEEN: esrbTeen,
-  MATURE: esrbMature,
-  'ADULTS ONLY': esrbAdultsOnly,
-  'RATING PENDING': esrbRatingPending,
-}
+  return platforms.find((item) => item.slug === platform.value) || null
+})
 
-function stripLinks(html) {
-  if (!html) return html
+const currentCategory = computed(() => {
+  const categories = Array.isArray(categoriesStore.categories) ? categoriesStore.categories : []
+
+  return (
+    categories.find(
+      (item) => item.slug === category.value && item.parent?.slug === platform.value,
+    ) || null
+  )
+})
+
+const platformTitle = computed(() => {
+  return currentPlatform.value?.title || platform.value
+})
+
+const categoryTitle = computed(() => {
+  return currentCategory.value?.title || category.value
+})
+
+const breadcrumbs = computed(() => [
+  {
+    title: t('Home'),
+    link: '/',
+  },
+  {
+    title: t('Platforms'),
+    link: '/products',
+  },
+  {
+    title: platformTitle.value,
+    link: `/products/${platform.value}`,
+  },
+  {
+    title: t(categoryTitle.value),
+    link: `/products/${platform.value}/${category.value}`,
+  },
+  {
+    title: activeGame.value?.title || '',
+  },
+])
+
+const isFavorite = computed(() => {
+  if (!activeGame.value?.id || !Array.isArray(wishListStore.items)) {
+    return false
+  }
+
+  return wishListStore.items.some((item) => item.id === activeGame.value.id)
+})
+
+const productCategory = computed(() => {
+  if (!Array.isArray(activeGame.value?.categories)) {
+    return null
+  }
+
+  return activeGame.value.categories.find((item) => item.parent !== null) || null
+})
+
+const productTags = computed(() => {
+  const tags = []
+
+  if (productCategory.value?.parent?.title) {
+    tags.push(productCategory.value.parent.title)
+  }
+
+  if (productCategory.value?.title) {
+    tags.push(productCategory.value.title)
+  }
+
+  if (activeGame.value?.region) {
+    tags.push(activeGame.value.region)
+  }
+
+  return tags
+})
+
+const specs = computed(() => {
+  const game = activeGame.value
+
+  if (!game) {
+    return []
+  }
+
+  const result = []
+
+  if (game.developer) {
+    result.push({
+      label: t('Developer'),
+      value: game.developer,
+    })
+  }
+
+  if (game.publisher) {
+    result.push({
+      label: t('Publisher'),
+      value: game.publisher,
+    })
+  }
+
+  if (game.release_date) {
+    result.push({
+      label: t('Release date'),
+      value: game.release_date,
+    })
+  }
+
+  if (game.region) {
+    result.push({
+      label: t('Region'),
+      value: game.region,
+    })
+  }
+
+  if (game.activation) {
+    result.push({
+      label: t('Activation'),
+      value: game.activation,
+    })
+  }
+
+  if (game.esrb_rating) {
+    result.push({
+      label: t('Restrictions'),
+      value: game.esrb_rating,
+    })
+  }
+
+  return result
+})
+
+const languagesText = computed(() => {
+  if (!Array.isArray(activeGame.value?.languages)) {
+    return ''
+  }
+
+  return activeGame.value.languages
+    .map((lang) => lang.value || lang.additional_value)
+    .filter(Boolean)
+    .join(', ')
+})
+const stripLinks = (html) => {
+  if (!html) return ''
+
   return html.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1')
 }
 
-function langFlagClass(code) {
+const langFlagClass = (code) => {
   const cc = langCountryMap[code?.toUpperCase()] || code?.toLowerCase()
+
   return `fi fi-${cc}`
 }
 
-function esrbIcon(rating) {
-  return esrbIcons[rating?.toUpperCase()] || null
-}
+const fetchGame = async () => {
+  if (!currStore.currency?.code || !game.value) {
+    return
+  }
 
-const props = defineProps({
-  platform: {
-    type: String,
-    required: true,
-  },
-  category: {
-    type: String,
-    required: true,
-  },
-  game: {
-    type: String,
-    required: true,
-  },
-})
+  try {
+    const res = await axios.get(`products/${game.value}`, {
+      params: {
+        currency: currStore.currency.code,
+      },
+    })
 
-const categoryTitle = ref('')
-const activeGame = ref({})
-const similar = ref([])
+    activeGame.value = res.data.data
+  } catch (error) {
+    activeGame.value = null
 
-const { game, platform, category } = toRefs(props)
-
-function addToCart() {
-  if (authStore.isAuth) {
-    cartStore.add(activeGame.value.id)
-  } else {
-    loginModalStore.openModal()
+    console.error('Failed to load product:', error)
   }
 }
 
-function addToFavorites(id) {
-  if (authStore.isAuth) {
-    if (wishListStore.items.some((obj) => obj.id == id)) {
-      wishListStore.remove(id)
+const fetchSimilar = async () => {
+  if (!currStore.currency?.code || !currentCategory.value?.id) {
+    return
+  }
+
+  try {
+    const res = await axios.get('catalog/similar', {
+      params: {
+        currency: currStore.currency.code,
+        category_id: currentCategory.value.id,
+      },
+    })
+
+    similar.value = Array.isArray(res.data.data) ? res.data.data.slice(0, 5) : []
+  } catch (error) {
+    similar.value = []
+
+    console.error('Failed to load similar products:', error)
+  }
+}
+
+const addToCart = async () => {
+  if (!authStore.isAuth) {
+    loginModalStore.openModal()
+    return false
+  }
+
+  if (!activeGame.value?.id || isCartLoading.value) {
+    return false
+  }
+
+  isCartLoading.value = true
+
+  try {
+    await cartStore.add(activeGame.value.id)
+
+    return !cartStore.error
+  } finally {
+    isCartLoading.value = false
+  }
+}
+
+const buyNow = async () => {
+  const added = await addToCart()
+
+  if (!added) {
+    return
+  }
+
+  router.push('/cart')
+}
+
+const toggleFavorite = async () => {
+  if (!authStore.isAuth) {
+    loginModalStore.openModal()
+    return
+  }
+
+  if (!activeGame.value?.id || isFavoriteLoading.value) {
+    return
+  }
+
+  isFavoriteLoading.value = true
+
+  try {
+    if (isFavorite.value) {
+      await wishListStore.remove(activeGame.value.id)
     } else {
-      wishListStore.add(id)
+      await wishListStore.add(activeGame.value.id)
     }
-  } else {
-    loginModalStore.openModal()
+  } finally {
+    isFavoriteLoading.value = false
   }
 }
-watchEffect(() => {
-  if (currStore.currency.code) {
-    axios
-      .get('products/' + game.value, {
-        params: { currency: currStore.currency.code },
-      })
-      .then((res) => {
-        console.log(res.data.data)
-        activeGame.value = res.data.data
-      })
-  }
-})
-onMounted(() => {
-  watchEffect(() => {
-    if (
-      currStore.currency.symbol &&
-      categoriesStore.categories &&
-      categoriesStore.categories.length
-    ) {
-      let categoryId = categoriesStore.categories.find((item) => item.slug == category.value).id
-      axios
-        .get('catalog/similar', {
-          params: { currency: currStore.currency.code, category_id: categoryId },
-        })
-        .then((res) => {
-          similar.value = res.data.data
-        })
-    }
 
-    if (categoriesStore.categories && categoriesStore.categories.length) {
-      categoryTitle.value = categoriesStore.categories.find(
-        (item) => item.slug === category.value,
-      ).title
-    }
-  })
+watch(
+  [() => game.value, () => currStore.currency?.code],
+  () => {
+    fetchGame()
+  },
+  {
+    immediate: true,
+  },
+)
+
+watch(
+  [() => currentCategory.value?.id, () => currStore.currency?.code],
+  () => {
+    fetchSimilar()
+  },
+  {
+    immediate: true,
+  },
+)
+
+onMounted(() => {
+  if (authStore.isAuth && !wishListStore.items?.length) {
+    wishListStore.get()
+  }
 })
 </script>
+
 <template>
-  <main class="main">
-    <div class="section breadcrumbs-section">
-      <div class="wrapper flex">
-        <RouterLink to="/" class="text text-14 text-white">{{ $t('Home') }}</RouterLink>
-        <div class="text text-14 text-white">/</div>
-        <RouterLink to="/products" class="text text-14 text-white">{{
-          $t('Shop Games')
-        }}</RouterLink>
-        <div class="text text-14 text-white">/</div>
-        <RouterLink :to="'/products/' + platform" class="text text-14 text-white">{{
-          platform
-        }}</RouterLink>
-        <div class="text text-14 text-white">/</div>
-        <RouterLink
-          :to="'/products/' + platform + '/' + category"
-          class="text text-14 text-white"
-          >{{ $t(categoryTitle) }}</RouterLink
-        >
-        <div class="text text-14 text-white">/</div>
-        <div class="text text-14 text-pink" v-if="activeGame">
-          {{ activeGame.title }}
-        </div>
-      </div>
-    </div>
-    <div class="section categories-section game-section">
-      <div class="wrapper">
-        <div
-          class="game-content flex items-start justify-between"
-          v-if="activeGame && Object.keys(activeGame).length !== 0"
-        >
-          <RouterLink :to="'/products/' + platform + '/' + category" class="back flex items-center">
-            <svg
-              width="24"
-              height="25"
-              viewBox="0 0 24 25"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M6 12.5C6.00486 11.9739 6.21684 11.4709 6.59 11.1L10.88 6.79999C11.0674 6.61374 11.3208 6.5092 11.585 6.5092C11.8492 6.5092 12.1026 6.61374 12.29 6.79999C12.3837 6.89296 12.4581 7.00356 12.5089 7.12542C12.5597 7.24728 12.5858 7.37798 12.5858 7.50999C12.5858 7.64201 12.5597 7.77271 12.5089 7.89457C12.4581 8.01643 12.3837 8.12703 12.29 8.21999L9 11.5H19C19.2652 11.5 19.5196 11.6054 19.7071 11.7929C19.8946 11.9804 20 12.2348 20 12.5C20 12.7652 19.8946 13.0196 19.7071 13.2071C19.5196 13.3946 19.2652 13.5 19 13.5H9L12.29 16.79C12.4783 16.977 12.5846 17.2311 12.5856 17.4965C12.5865 17.7618 12.482 18.0167 12.295 18.205C12.108 18.3933 11.8539 18.4996 11.5885 18.5006C11.3232 18.5015 11.0683 18.397 10.88 18.21L6.59 13.91C6.21441 13.5366 6.00223 13.0296 6 12.5Z"
-                fill="white"
-              />
-            </svg>
-          </RouterLink>
-          <div class="img-container">
-            <img :alt="activeGame.image" class="img" :src="activeGame.image" />
+  <main class="game-page">
+    <div class="game-page__container _cnt-home">
+      <Breadcrumbs class="game-page__breadcrumbs" :items="breadcrumbs" />
+
+      <div v-if="activeGame" class="game-page__main">
+        <div class="game-page__gallery gallery">
+          <div class="gallery__main _ibg">
+            <img v-if="activeGame.image" :src="activeGame.image" :alt="activeGame.title" />
           </div>
-          <div class="product-info">
-            <div class="flex items-center product-title-container">
-              <div class="product-title text text-24 text-russo">
-                {{ activeGame.title }}
+        </div>
+
+        <div class="game-page__info game-info">
+          <div class="game-info__head">
+            <div v-if="productTags.length" class="game-info__tags">
+              <div v-for="tag in productTags" :key="tag" class="game-info__tag">
+                {{ $t(tag) }}
+              </div>
+            </div>
+
+            <h1 class="game-info__title">
+              {{ activeGame.title }}
+            </h1>
+          </div>
+
+          <div class="game-info__purchase purchase">
+            <div class="purchase__top">
+              <div class="purchase__price">
+                <PriceFormatter
+                  size="size-21-market"
+                  :price="activeGame.price"
+                  class="purchase__price-current"
+                />
+
+                <div class="purchase__vat">
+                  {{ $t('incl. vat') }}
+                </div>
               </div>
 
+              <div class="purchase__stock">
+                <div class="purchase__stock-label">
+                  {{ $t('In stock') }}
+                </div>
+
+                <div class="purchase__stock-value">
+                  {{ $t('Available') }}
+                </div>
+              </div>
+            </div>
+
+            <div class="purchase__actions">
+              <BaseButton
+                variant="secondary"
+                class="purchase__button"
+                :disabled="isCartLoading"
+                @click="buyNow"
+              >
+                {{ $t('Buy now') }}
+              </BaseButton>
+
+              <BaseButton
+                variant="primary"
+                class="purchase__button"
+                :disabled="isCartLoading"
+                @click="addToCart"
+              >
+                {{ $t('Add to cart') }}
+              </BaseButton>
+
               <button
-                :class="[
-                  'star',
-                  { active: wishListStore.items.find((item) => item.id == activeGame.id) },
-                ]"
-                @click="addToFavorites(activeGame.id)"
-              ></button>
-            </div>
-            <div class="product-price text text-white weight-700 text-24">
-              {{ activeGame.price }} {{ currStore.currency.symbol }}
-            </div>
-            <div class="buttons flex">
-              <button class="button w-150 colored" @click="addToCart">
-                <span>{{ $t('Order') }}</span>
+                type="button"
+                class="purchase__favorite"
+                :class="{
+                  active: isFavorite,
+                }"
+                :disabled="isFavoriteLoading"
+                @click="toggleFavorite"
+              >
+                <SvgIcon :icon="FavoriteIcon" class="purchase__favorite-icon" />
               </button>
             </div>
-            <Transition>
-              <div class="text text-14 text-red text-error" v-if="cartStore.error">
-                {{ $t(cartStore.error) }}
-              </div>
-            </Transition>
-            <Transition>
-              <div class="text text-14 text-green text-error" v-if="cartStore.success">
-                {{ $t(cartStore.success) }}
-              </div>
-            </Transition>
-            <Transition>
-              <div class="text text-14 text-red text-error" v-if="wishListStore.error">
-                {{ $t(wishListStore.error) }}
-              </div>
-            </Transition>
-            <Transition>
-              <div class="text text-14 text-green text-error" v-if="wishListStore.success">
-                {{ $t(wishListStore.success) }}
-              </div>
-            </Transition>
-            <div
-              class="product-about"
-              v-if="
-                activeGame.developer ||
-                activeGame.publisher ||
-                activeGame.release_date ||
-                activeGame.esrb_rating ||
-                activeGame.languages
-              "
-            >
-              <div class="text text-20 text-russo">{{ $t('About the product') }}</div>
-              <div class="about-card">
-                <div class="about-row" v-if="activeGame.developer">
-                  <span class="about-label text text-14 weight-700">{{ $t('Developer') }}:</span>
-                  <span class="about-value text text-14">{{ activeGame.developer }}</span>
-                </div>
-                <div class="about-row" v-if="activeGame.publisher">
-                  <span class="about-label text text-14 weight-700">{{ $t('Publisher') }}:</span>
-                  <span class="about-value text text-14">{{ activeGame.publisher }}</span>
-                </div>
-                <div class="about-row" v-if="activeGame.release_date">
-                  <span class="about-label text text-14 weight-700">{{ $t('Release date') }}:</span>
-                  <span class="about-value text text-14">{{ activeGame.release_date }}</span>
-                </div>
-                <div class="about-row" v-if="activeGame.esrb_rating">
-                  <span class="about-label text text-14 weight-700">{{ $t('Restrictions') }}:</span>
-                  <span class="about-value">
-                    <img
-                      v-if="esrbIcon(activeGame.esrb_rating)"
-                      :src="esrbIcon(activeGame.esrb_rating)"
-                      :alt="activeGame.esrb_rating"
-                      class="esrb-icon"
-                    />
-                    <span v-else class="text text-14">{{ activeGame.esrb_rating }}</span>
-                  </span>
-                </div>
-                <div class="about-row" v-if="activeGame.languages && activeGame.languages.length">
-                  <span class="about-label text text-14 weight-700">{{ $t('Languages') }}:</span>
-                  <span class="about-value about-languages">
-                    <span
-                      v-for="(lang, i) in activeGame.languages"
-                      :key="i"
-                      :class="langFlagClass(lang.value)"
-                      :title="lang.additional_value"
-                    ></span>
-                  </span>
-                </div>
-              </div>
+
+            <div class="purchase__delivery">
+              <span class="purchase__delivery-icon"> ✉ </span>
+
+              <span>
+                {{
+                  $t('Key lands in your email and account library about a minute after payment.')
+                }}
+              </span>
             </div>
+          </div>
+
+          <div
+            v-if="activeGame.description_html || activeGame.description"
+            class="game-info__about"
+          >
+            <div class="game-info__label">
+              {{ $t('About this game') }}
+            </div>
+
             <div
-              class="product-description text text-16"
               v-if="activeGame.description_html"
+              class="game-info__description"
               v-html="stripLinks(activeGame.description_html)"
             />
-            <div
-              class="product-description text text-16"
-              v-else-if="activeGame.description"
-              v-html="activeGame.description"
-            />
+
+            <div v-else class="game-info__description" v-html="activeGame.description" />
           </div>
-        </div>
-        <div class="game-related" v-if="similar">
-          <div class="text text-24 text-russo">{{ $t('Recommended products') }}</div>
-          <div class="list product-list flex flex-wrap">
-            <div class="item" v-for="(item, i) in similar.splice(0, 5)" :key="i">
-              <ProductItem :item="item" />
+
+          <div v-if="specs.length || languagesText" class="game-info__specs">
+            <div v-for="spec in specs" :key="spec.label" class="game-info__spec">
+              <div class="game-info__spec-label">
+                {{ spec.label }}
+              </div>
+
+              <div class="game-info__spec-value">
+                {{ spec.value }}
+              </div>
+            </div>
+
+            <div v-if="activeGame.languages?.length" class="game-info__spec">
+              <div class="game-info__spec-label">
+                {{ $t('Languages') }}
+              </div>
+
+              <div class="game-info__languages">
+                <span
+                  v-for="(lang, index) in activeGame.languages"
+                  :key="index"
+                  :class="langFlagClass(lang.value)"
+                  :title="lang.additional_value || lang.value"
+                />
+              </div>
             </div>
           </div>
+
+          <Transition>
+            <div v-if="cartStore.error" class="game-info__message error">
+              {{ $t(cartStore.error) }}
+            </div>
+          </Transition>
+
+          <Transition>
+            <div v-if="cartStore.success" class="game-info__message success">
+              {{ $t(cartStore.success) }}
+            </div>
+          </Transition>
+
+          <Transition>
+            <div v-if="wishListStore.error" class="game-info__message error">
+              {{ $t(wishListStore.error) }}
+            </div>
+          </Transition>
+
+          <Transition>
+            <div v-if="wishListStore.success" class="game-info__message success">
+              {{ $t(wishListStore.success) }}
+            </div>
+          </Transition>
         </div>
       </div>
+
+      <section v-if="similar.length" class="game-page__recommended recommended">
+        <div class="recommended__top">
+          <h2 class="recommended__title _h2">
+            {{ $t('You might also like') }}
+          </h2>
+
+          <div class="recommended__line" />
+
+          <RouterLink :to="`/products/${platform}/${category}`" class="recommended__link">
+            {{ $t('All keys') }}
+          </RouterLink>
+        </div>
+
+        <div class="recommended__list">
+          <ProductListItem
+            v-for="item in similar"
+            :key="item.id"
+            :item="item"
+            class="recommended__item"
+          />
+        </div>
+      </section>
     </div>
   </main>
 </template>
+
+<style scoped lang="scss">
+@use '@/assets/styles/mixins' as *;
+@use '@/assets/styles/media' as *;
+@use '@/assets/styles/classes' as *;
+
+.game-page {
+  @include header-indent;
+  @include adaptiveValue('padding-top', 22, 14);
+  @include adaptiveValue('padding-bottom', 100, 32);
+
+  &__breadcrumbs {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 38, 14);
+    }
+  }
+
+  &__main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 56, 24);
+
+    @media (max-width: $md3) {
+      gap: 30px;
+    }
+
+    @media (max-width: $md8) {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+  }
+
+  &__gallery {
+    min-width: 0;
+  }
+
+  &__info {
+    min-width: 0;
+  }
+
+  &__recommended {
+    @include adaptiveValue('margin-top', 96, 32);
+  }
+}
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 14, 8);
+
+  &__main {
+    position: relative;
+
+    width: 100%;
+    padding-bottom: 75%;
+
+    overflow: hidden;
+
+    border: 2px solid var(--border-primary-color);
+    @include adaptiveValue('border-radius', 14, 10);
+
+    background-color: var(--bg-secondary-color);
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 14, 8);
+  }
+
+  &__item {
+    width: 100%;
+    padding-bottom: 75%;
+
+    overflow: hidden;
+
+    border: 2px solid var(--border-primary-color);
+    @include adaptiveValue('border-radius', 10, 8);
+
+    background-color: var(--bg-secondary-color);
+  }
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 26, 16);
+
+  &__head {
+    display: flex;
+    flex-direction: column;
+
+    @include adaptiveValue('gap', 14, 10);
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 8px;
+  }
+
+  &__tag {
+    padding: 5px 10px;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 6px;
+
+    color: var(--seconday-color);
+
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 700;
+
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+
+    &:first-child {
+      color: var(--hint-primary-color);
+      border-color: var(--border-primary-color);
+    }
+
+    @media (max-width: $md8) {
+      padding: 4px 8px;
+
+      font-size: 10px;
+      line-height: 13px;
+    }
+  }
+
+  &__title {
+    margin: 0;
+
+    color: var(--primary-color);
+
+    font-family: var(--font-gabarito);
+    font-weight: 900;
+
+    @include adaptiveValue('font-size', 44, 28);
+    @include adaptiveValue('line-height', 47, 31);
+
+    letter-spacing: -0.03em;
+  }
+
+  &__about {
+    display: flex;
+    flex-direction: column;
+
+    @include adaptiveValue('gap', 14, 10);
+  }
+
+  &__label {
+    color: var(--seconday-color);
+
+    font-size: 11px;
+    line-height: 15px;
+
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    @media (max-width: $md8) {
+      font-size: 10px;
+    }
+  }
+
+  &__description {
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 15, 13);
+    @include adaptiveValue('line-height', 27, 22);
+
+    :deep(p) {
+      margin: 0;
+
+      &:not(:last-child) {
+        margin-bottom: 10px;
+      }
+    }
+  }
+
+  &__specs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    column-gap: 40px;
+
+    @media (max-width: $md8) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__spec {
+    min-width: 0;
+
+    padding: 14px 0;
+
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    border-bottom: 2px solid var(--border-primary-color);
+
+    @media (max-width: $md8) {
+      padding: 12px 0;
+    }
+  }
+
+  &__spec-label {
+    color: var(--seconday-color);
+
+    font-size: 13px;
+
+    @media (max-width: $md8) {
+      font-size: 12px;
+    }
+  }
+
+  &__spec-value {
+    color: var(--primary-color);
+
+    font-size: 14px;
+    text-align: right;
+
+    @media (max-width: $md8) {
+      font-size: 13px;
+    }
+  }
+
+  &__languages {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 5px;
+  }
+
+  &__languages-text {
+    margin-left: 5px;
+
+    color: var(--primary-color);
+
+    font-size: 13px;
+  }
+
+  &__message {
+    padding: 10px 12px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+
+    &.error {
+      color: var(--error-color);
+      background-color: var(--error-bg-color);
+    }
+
+    &.success {
+      color: var(--success-color);
+      background-color: var(--bg-sixth-color);
+    }
+  }
+}
+
+.purchase {
+  padding: 28px 32px;
+
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 22, 16);
+
+  border: 2px solid var(--border-primary-color);
+  @include adaptiveValue('border-radius', 14, 10);
+
+  background-color: var(--bg-secondary-color);
+
+  @media (max-width: $md8) {
+    padding: 18px 20px;
+  }
+
+  &__top {
+    display: flex;
+    align-items: flex-end;
+
+    gap: 20px;
+  }
+
+  &__price {
+    display: flex;
+    align-items: baseline;
+
+    gap: 12px;
+  }
+
+  &__price-current {
+    color: var(--primary-color);
+
+    :deep(.price__number),
+    :deep(.price__symbol) {
+      font-family: var(--font-gabarito);
+      font-weight: 900;
+
+      @include adaptiveValue('font-size', 44, 30);
+      line-height: 1;
+    }
+  }
+
+  &__vat {
+    color: var(--seconday-color);
+
+    font-size: 12px;
+  }
+
+  &__stock {
+    margin-left: auto;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    gap: 4px;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__stock-label {
+    color: var(--seconday-color);
+
+    font-size: 11px;
+
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  &__stock-value {
+    color: var(--primary-color);
+
+    font-size: 14px;
+  }
+
+  &__actions {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      52px;
+
+    gap: 14px;
+
+    @media (max-width: $md8) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      gap: 10px;
+    }
+  }
+
+  &__button {
+    width: 100%;
+  }
+
+  &__favorite {
+    width: 52px;
+    height: 52px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 10px;
+
+    background-color: transparent;
+
+    color: var(--seconday-color);
+
+    cursor: pointer;
+
+    transition:
+      color 0.3s ease,
+      border-color 0.3s ease,
+      background-color 0.3s ease;
+
+    &.active {
+      color: var(--hint-primary-color);
+      border-color: var(--hint-primary-color);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        color: var(--hint-primary-color);
+        border-color: var(--hint-primary-color);
+      }
+    }
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__favorite-icon {
+    min-width: 20px;
+    height: 20px;
+  }
+
+  &__delivery {
+    padding-top: 20px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    border-top: 2px solid var(--border-primary-color);
+
+    color: var(--seconday-color);
+
+    font-size: 13px;
+    line-height: 18px;
+
+    @media (max-width: $md8) {
+      padding-top: 14px;
+
+      font-size: 12px;
+      line-height: 18px;
+    }
+  }
+
+  &__delivery-icon {
+    color: var(--hint-primary-color);
+  }
+}
+
+.recommended {
+  &__top {
+    display: flex;
+    align-items: baseline;
+
+    gap: 28px;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 28, 16);
+    }
+  }
+
+  &__title {
+    flex: 0 0 auto;
+  }
+
+  &__line {
+    flex: 1 1 auto;
+
+    height: 1px;
+
+    background: linear-gradient(to right, var(--border-primary-color), transparent);
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__link {
+    flex: 0 0 auto;
+
+    color: var(--hint-primary-color);
+
+    font-size: 13px;
+    font-weight: 600;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+
+    gap: 20px;
+
+    @media (max-width: $md2) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md3) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md8) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      gap: 12px;
+    }
+  }
+
+  &__item {
+    min-width: 0;
+  }
+}
+</style>
