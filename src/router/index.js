@@ -1,5 +1,6 @@
 import HomeView from '@/views/HomePage/HomeView.vue'
 import PlatformListView from '@/views/ProductPages/PlatformListView.vue'
+
 import PlatformView from '@/views/ProductPages/PlatformView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import CartView from '../views/CartView.vue'
