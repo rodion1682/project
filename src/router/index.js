@@ -11,11 +11,11 @@ import GameView from '../views/GameView.vue'
 import GiftCardView from '../views/GiftCardView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import PayView from '../views/PayView.vue'
-import ProductListView from '../views/ProductListView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import StaticPageView from '../views/StaticPageView.vue'
 import SuccessPayment from '../views/SuccessPayment.vue'
 import WishListView from '../views/WishListView.vue'
+import ProductListView from '@/views/ProductPages/ProductListView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

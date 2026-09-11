@@ -3,10 +3,11 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import BaseSelect from '@/components/ui/BaseSelect.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import PlatformCategoryItem from './components/PlatformCategoryItem.vue'
 
 import { useCategoriesStore } from '@/stores/categories'
-import PlatformCategoryItem from './components/PlatformCategoryItem.vue'
 
 const props = defineProps({
   platform: {
@@ -38,6 +39,17 @@ const categories = computed(() => {
   return items.filter((item) => item.parent?.slug === props.platform)
 })
 
+const categoryOptions = computed(() => [
+  {
+    label: t('All categories'),
+    value: 'all',
+  },
+  ...categories.value.map((item) => ({
+    label: t(item.title),
+    value: item.slug,
+  })),
+])
+
 const breadcrumbs = computed(() => [
   {
     title: t('Home'),
@@ -52,10 +64,10 @@ const breadcrumbs = computed(() => [
   },
 ])
 
-const goToCategory = () => {
-  if (!selectedCategory.value) return
+const goToCategory = (value) => {
+  if (!value) return
 
-  router.push(`/products/${props.platform}/${selectedCategory.value}`)
+  router.push(`/products/${props.platform}/${value}`)
 }
 </script>
 
@@ -66,7 +78,7 @@ const goToCategory = () => {
 
       <div class="platform-page__top">
         <div class="platform-page__heading">
-          <h1 class="platform-page__title _h4">
+          <h1 class="platform-page__title _product-litle">
             {{ platformTitle }}
             {{ $t('keys') }}
           </h1>
@@ -78,25 +90,14 @@ const goToCategory = () => {
         </div>
 
         <div class="platform-page__filters">
-          <div class="platform-page__select select-category">
-            <select
-              v-model="selectedCategory"
-              class="select-category__field"
-              @change="goToCategory"
-            >
-              <option value="" disabled>
-                {{ $t('Select category') }}
-              </option>
-
-              <option value="all">
-                {{ $t('All categories') }}
-              </option>
-
-              <option v-for="item in categories" :key="item.id" :value="item.slug">
-                {{ $t(item.title) }}
-              </option>
-            </select>
-          </div>
+          <BaseSelect
+            v-model="selectedCategory"
+            class="platform-page__select"
+            :label="$t('Genre')"
+            :placeholder="$t('Select category')"
+            :options="categoryOptions"
+            @update:model-value="goToCategory"
+          />
         </div>
       </div>
 
@@ -183,14 +184,11 @@ const goToCategory = () => {
   }
 
   &__select {
-    min-width: 180px;
+    min-width: 190px;
 
     @media (max-width: $md5) {
       width: 100%;
     }
-  }
-
-  &__categories {
   }
 
   &__empty {
@@ -204,73 +202,6 @@ const goToCategory = () => {
     color: var(--seconday-color);
 
     text-align: center;
-  }
-}
-
-.select-category {
-  position: relative;
-
-  border: 2px solid var(--border-primary-color);
-  border-radius: 10px;
-
-  background-color: var(--bg-secondary-color);
-
-  transition: border-color 0.3s ease;
-
-  &::after {
-    content: '';
-
-    position: absolute;
-    top: 50%;
-    right: 14px;
-
-    width: 7px;
-    height: 7px;
-
-    border-right: 2px solid var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
-
-    transform: translateY(-70%) rotate(45deg);
-
-    pointer-events: none;
-  }
-
-  &:focus-within {
-    border-color: var(--hint-primary-color);
-  }
-
-  @media (any-hover: hover) {
-    &:hover {
-      border-color: var(--hint-primary-color);
-    }
-  }
-
-  &__field {
-    width: 100%;
-    min-height: 44px;
-
-    padding: 0 38px 0 14px;
-
-    border: none;
-    outline: none;
-
-    appearance: none;
-    -webkit-appearance: none;
-
-    background: transparent;
-
-    color: var(--primary-color);
-
-    font-family: var(--font-open-sans);
-    font-size: 13px;
-    font-weight: 600;
-
-    cursor: pointer;
-
-    option {
-      color: var(--primary-color);
-      background-color: var(--bg-secondary-color);
-    }
   }
 }
 

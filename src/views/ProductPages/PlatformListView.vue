@@ -29,7 +29,7 @@ const platforms = computed(() => {
     <div class="products-page__container _cnt-home">
       <Breadcrumbs class="products-page__breadcrumbs" :items="breadcrumbs" />
 
-      <div class="products-page__title _h4">
+      <div class="products-page__title _product-litle">
         {{ $t('Pick your platform') }}
       </div>
 

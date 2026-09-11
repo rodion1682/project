@@ -85,7 +85,9 @@ onMounted(() => {
 <template>
   <div :class="'page page_' + router.currentRoute.value.name">
     <HeaderView />
-    <RouterView />
+    <div class="page__content">
+      <RouterView />
+    </div>
     <FooterView />
     <Transition>
       <LoginModal v-if="loginModalStore.isModalOpen" />
@@ -104,3 +106,16 @@ onMounted(() => {
     </Transition>
   </div>
 </template>
+
+<style scoped lang="scss">
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 100%;
+  &__content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 100%;
+  }
+}
+</style>
