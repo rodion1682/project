@@ -2,6 +2,7 @@ import HomeView from '@/views/HomePage/HomeView.vue'
 import PlatformListView from '@/views/ProductPages/PlatformListView.vue'
 
 import PlatformView from '@/views/ProductPages/PlatformView.vue'
+import ProductListView from '@/views/ProductPages/ProductListView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import CartView from '../views/CartView.vue'
 import ContactView from '../views/ContactView.vue'
@@ -15,7 +16,6 @@ import ProfileView from '../views/ProfileView.vue'
 import StaticPageView from '../views/StaticPageView.vue'
 import SuccessPayment from '../views/SuccessPayment.vue'
 import WishListView from '../views/WishListView.vue'
-import ProductListView from '@/views/ProductPages/ProductListView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -46,6 +46,12 @@ const router = createRouter({
       component: CartView,
     },
     {
+      path: '/products',
+      name: 'platformList',
+      component: PlatformListView,
+      props: true,
+    },
+    {
       path: '/products/:platform',
       name: 'platform',
       component: PlatformView,
@@ -63,12 +69,7 @@ const router = createRouter({
       component: GameView,
       props: true,
     },
-    {
-      path: '/products',
-      name: 'platformList',
-      component: PlatformListView,
-      props: true,
-    },
+
     {
       path: '/profile/:page/:order?',
       name: 'profile',

@@ -82,6 +82,9 @@ const toggleFavorite = async () => {
   <RouterLink v-if="item" :to="getProductLink(item)" class="product-list-item">
     <div class="product-list-item__image _ibg">
       <img v-if="item.image" :src="item.image" :alt="item.title" />
+      <div v-if="category" class="product-list-item__slug-title">
+        {{ category.title }}
+      </div>
 
       <button
         type="button"
@@ -96,18 +99,18 @@ const toggleFavorite = async () => {
       </button>
     </div>
 
-    <div class="product-list-item__content">
+    <div class="product-list-item__top">
       <div v-if="category" class="product-list-item__category">
-        {{ $t(category.parent.title) }}
+        {{ $t(category.parent.slug) }}
       </div>
 
       <div v-if="item.title" class="product-list-item__title">
         {{ item.title }}
       </div>
-
-      <div class="product-list-item__bottom">
-        <PriceFormatter size="size-21" :price="item.price" class="product-list-item__price" />
-      </div>
+    </div>
+    <div class="product-list-item__bottom">
+      <PriceFormatter size="size-21-market" :price="item.price" class="product-list-item__price" />
+      <div class="product-list-item__vat">{{ $t('incl. vat') }}</div>
     </div>
   </RouterLink>
 </template>
@@ -149,11 +152,12 @@ const toggleFavorite = async () => {
     position: relative;
 
     width: 100%;
-
-    @include adaptiveValue('padding-bottom', 75%, 68%);
+    padding-bottom: 75%;
 
     overflow: hidden;
-
+    @media (max-width: $md8) {
+      padding-bottom: 68%;
+    }
     img {
       transition: transform 0.3s ease;
     }
@@ -166,7 +170,32 @@ const toggleFavorite = async () => {
       }
     }
   }
+  &__slug-title {
+    @include adaptiveValue('top', 10, 6);
 
+    @include adaptiveValue('left', 10, 6);
+    position: absolute;
+    width: fit-content;
+    @include adaptiveValue('padding-top', 6, 4);
+    @include adaptiveValue('padding-left', 10, 6);
+    @include adaptiveValue('padding-bottom', 6, 4);
+    @include adaptiveValue('padding-right', 10, 6);
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--bg-seventh-color);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    border-radius: 6px;
+    background-color: var(--bg-secondary-color);
+    border: 2px solid var(--border-primary-color);
+    display: flex;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    @media (max-width: $md8) {
+      @include hide-item;
+    }
+  }
   &__favorite {
     position: absolute;
 
@@ -219,7 +248,7 @@ const toggleFavorite = async () => {
     }
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
@@ -231,7 +260,7 @@ const toggleFavorite = async () => {
     color: inherit;
   }
 
-  &__content {
+  &__top {
     min-width: 0;
 
     flex: 1 1 auto;
@@ -239,27 +268,25 @@ const toggleFavorite = async () => {
     display: flex;
     flex-direction: column;
 
-    @include adaptiveValue('padding-top', 15, 10);
+    @include adaptiveValue('padding-top', 16, 12);
 
-    @include adaptiveValue('padding-right', 15, 10);
+    @include adaptiveValue('padding-right', 18, 12);
 
-    @include adaptiveValue('padding-bottom', 15, 10);
+    @include adaptiveValue('padding-bottom', 34, 22.5);
 
-    @include adaptiveValue('padding-left', 15, 10);
+    @include adaptiveValue('padding-left', 18, 16);
   }
 
   &__category {
     min-width: 0;
 
-    color: var(--teal-color);
+    color: var(--seconday-color);
 
-    @include adaptiveValue('font-size', 11, 9);
+    @include adaptiveValue('font-size', 11, 10);
 
-    @include adaptiveValue('line-height', 15, 12);
+    @include adaptiveValue('line-height', 15, 14);
 
-    font-weight: 700;
-
-    @include adaptiveValue('letter-spacing', 1.54, 1);
+    @include adaptiveValue('letter-spacing', 1.54, 1.4);
 
     text-transform: uppercase;
 
@@ -268,7 +295,7 @@ const toggleFavorite = async () => {
     text-overflow: ellipsis;
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 6, 4);
+      @include adaptiveValue('margin-bottom', 8, 6);
     }
   }
 
@@ -277,38 +304,38 @@ const toggleFavorite = async () => {
 
     color: var(--primary-color);
 
-    @include adaptiveValue('font-size', 15, 11);
+    @include adaptiveValue('font-size', 15, 13);
 
-    @include adaptiveValue('line-height', 19.5, 15);
+    @include adaptiveValue('line-height', 20.3, 16.9);
 
-    font-weight: 700;
+    font-weight: 500;
 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 18, 10);
-    }
   }
 
   &__bottom {
+    border-top: 2px solid var(--border-primary-color);
     margin-top: auto;
 
     display: flex;
+    gap: 20px;
     align-items: center;
     justify-content: space-between;
 
-    @include adaptiveValue('padding-top', 4, 2);
+    @include adaptiveValue('padding-top', 16, 13);
+    @include adaptiveValue('padding-left', 18, 12);
+    @include adaptiveValue('padding-bottom', 16, 13);
+    @include adaptiveValue('padding-right', 18, 12);
   }
 
   &__price {
   }
-
-  @media (max-width: $md8) {
-    &__content {
-      min-height: 92px;
-    }
+  &__vat {
+    @include adaptiveValue('font-size', 12, 10);
+    @include adaptiveValue('line-height', 16, 14);
+    color: var(--seconday-color);
   }
 }
 </style>

@@ -445,14 +445,14 @@ onBeforeUnmount(() => {
     gap: 20px;
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 26, 18);
+      @include adaptiveValue('margin-bottom', 30, 12);
     }
 
     @media (max-width: $md5) {
       align-items: stretch;
       flex-direction: column;
 
-      gap: 12px;
+      gap: 14px;
     }
   }
 
@@ -461,7 +461,7 @@ onBeforeUnmount(() => {
     align-items: center;
     flex-wrap: wrap;
 
-    gap: 10px;
+    @include adaptiveValue('gap', 10, 8);
 
     @media (max-width: $md5) {
       display: grid;
@@ -486,11 +486,10 @@ onBeforeUnmount(() => {
 
     color: var(--seconday-color);
 
-    font-size: 11px;
-    line-height: 15px;
-    font-weight: 700;
-
-    letter-spacing: 1.6px;
+    @include adaptiveValue('font-size', 13, 11);
+    @include adaptiveValue('line-height', 18, 15);
+    font-weight: 400;
+    @include adaptiveValue('letter-spacing', 1.82, 1.54);
     text-transform: uppercase;
   }
 
@@ -499,7 +498,7 @@ onBeforeUnmount(() => {
 
     grid-template-columns: repeat(5, minmax(0, 1fr));
 
-    @include adaptiveValue('gap', 20, 10);
+    @include adaptiveValue('gap', 22, 12);
 
     @media (max-width: 1199.98px) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -542,7 +541,7 @@ onBeforeUnmount(() => {
   }
 
   &__pagination {
-    @include adaptiveValue('margin-top', 42, 25);
+    @include adaptiveValue('margin-top', 58, 30);
   }
 }
 </style>

@@ -26,7 +26,7 @@ const props = defineProps({
 
   size: {
     type: String,
-    default: 'size-15', // size-12 | size-15 | size-21
+    default: 'size-15', // size-12 | size-15 | size-21 | size-21-market
   },
 
   price: {
@@ -60,6 +60,15 @@ const priceClasses = computed(() => ['price', props.size, props.class])
   &.size-12 {
   }
   &.size-15 {
+  }
+  &.size-21-market {
+    display: flex;
+    gap: 6px;
+    color: var(--primary-color);
+    @include adaptiveValue('font-size', 21, 16);
+    @include adaptiveValue('line-height', 25, 22);
+    font-family: var(--font-open-sans);
+    font-weight: 600;
   }
   &.size-21 {
     display: flex;
