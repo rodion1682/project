@@ -1,5 +1,15 @@
 <script setup>
-import { computed, ref, toRefs, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  toRefs,
+  watch,
+  watchEffect,
+} from 'vue'
+
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -54,6 +64,13 @@ const similar = ref([])
 
 const isCartLoading = ref(false)
 const isFavoriteLoading = ref(false)
+const isGameLoading = ref(false)
+const isSimilarLoading = ref(false)
+
+const isDescriptionExpanded = ref(false)
+const descriptionRef = ref(null)
+const descriptionHeight = ref('81px')
+const canExpandDescription = ref(false)
 
 const langCountryMap = {
   EN: 'gb',
@@ -245,44 +262,98 @@ const langFlagClass = (code) => {
   return `fi fi-${cc}`
 }
 
-const fetchGame = async () => {
-  if (!currStore.currency?.code || !game.value) {
+const getCollapsedDescriptionHeight = () => {
+  return window.innerWidth <= 439.98 ? 66 : 81
+}
+
+const updateDescriptionHeight = async () => {
+  await nextTick()
+
+  if (!descriptionRef.value) {
     return
   }
 
+  const collapsedHeight = getCollapsedDescriptionHeight()
+
+  const fullHeight = descriptionRef.value.scrollHeight
+
+  canExpandDescription.value = fullHeight > collapsedHeight + 2
+
+  descriptionHeight.value = isDescriptionExpanded.value ? `${fullHeight}px` : `${collapsedHeight}px`
+}
+
+const toggleDescription = async () => {
+  isDescriptionExpanded.value = !isDescriptionExpanded.value
+
+  await updateDescriptionHeight()
+}
+
+const handleDescriptionResize = () => {
+  updateDescriptionHeight()
+}
+
+const fetchGame = async () => {
+  const productId = game.value
+  const currency = currStore.currency?.code
+
+  if (!productId || !currency) {
+    return
+  }
+
+  isGameLoading.value = true
+
   try {
-    const res = await axios.get(`products/${game.value}`, {
+    const res = await axios.get(`products/${productId}`, {
       params: {
-        currency: currStore.currency.code,
+        currency,
       },
     })
 
-    activeGame.value = res.data.data
+    const product = res.data?.data ?? res.data?.payload ?? res.data ?? null
+
+    activeGame.value = product
+
+    isDescriptionExpanded.value = false
+
+    await nextTick()
+    await updateDescriptionHeight()
   } catch (error) {
     activeGame.value = null
 
     console.error('Failed to load product:', error)
+  } finally {
+    isGameLoading.value = false
   }
 }
 
 const fetchSimilar = async () => {
-  if (!currStore.currency?.code || !currentCategory.value?.id) {
+  const currency = currStore.currency?.code
+
+  const categoryId = currentCategory.value?.id
+
+  if (!currency || !categoryId) {
     return
   }
+
+  isSimilarLoading.value = true
 
   try {
     const res = await axios.get('catalog/similar', {
       params: {
-        currency: currStore.currency.code,
-        category_id: currentCategory.value.id,
+        currency,
+        category_id: categoryId,
       },
     })
 
-    similar.value = Array.isArray(res.data.data) ? res.data.data.slice(0, 5) : []
+    const items = res.data?.data ?? res.data?.payload ?? []
+
+    similar.value = Array.isArray(items) ? items.slice(0, 5) : []
   } catch (error) {
     similar.value = []
 
     console.error('Failed to load similar products:', error)
+  } finally {
+    isSimilarLoading.value = false
   }
 }
 
@@ -366,25 +437,54 @@ const toggleFavorite = async () => {
   }
 }
 
+watchEffect(() => {
+  const productId = game.value
+  const currency = currStore.currency?.code
+
+  if (!productId || !currency) {
+    return
+  }
+
+  fetchGame()
+})
+
+watchEffect(() => {
+  const currency = currStore.currency?.code
+
+  const categoryId = currentCategory.value?.id
+
+  if (!currency || !categoryId) {
+    return
+  }
+
+  fetchSimilar()
+})
+
 watch(
-  [() => game.value, () => currStore.currency?.code],
-  () => {
-    fetchGame()
-  },
-  {
-    immediate: true,
+  () => [activeGame.value?.description_html, activeGame.value?.description],
+  async () => {
+    isDescriptionExpanded.value = false
+
+    await nextTick()
+    await updateDescriptionHeight()
   },
 )
 
-watch(
-  [() => currentCategory.value?.id, () => currStore.currency?.code],
-  () => {
-    fetchSimilar()
-  },
-  {
-    immediate: true,
-  },
-)
+onMounted(async () => {
+  window.addEventListener('resize', handleDescriptionResize)
+
+  await nextTick()
+
+  if (game.value && currStore.currency?.code && !activeGame.value) {
+    await fetchGame()
+  }
+
+  await updateDescriptionHeight()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleDescriptionResize)
+})
 </script>
 
 <template>
@@ -414,7 +514,7 @@ watch(
             <div class="purchase__top">
               <div class="purchase__price">
                 <PriceFormatter
-                  size="size-21-market"
+                  size="size-44"
                   :price="activeGame.price"
                   class="purchase__price-current"
                 />
@@ -490,12 +590,32 @@ watch(
             </div>
 
             <div
-              v-if="activeGame.description_html"
-              class="game-info__description"
-              v-html="stripLinks(activeGame.description_html)"
-            />
+              class="game-info__description-wrapper"
+              :class="{
+                expanded: isDescriptionExpanded,
+              }"
+              :style="{
+                maxHeight: descriptionHeight,
+              }"
+            >
+              <div ref="descriptionRef" class="game-info__description">
+                <div
+                  v-if="activeGame.description_html"
+                  v-html="stripLinks(activeGame.description_html)"
+                />
 
-            <div v-else class="game-info__description" v-html="activeGame.description" />
+                <div v-else v-html="activeGame.description" />
+              </div>
+            </div>
+
+            <button
+              v-if="canExpandDescription"
+              type="button"
+              class="game-info__description-toggle"
+              @click="toggleDescription"
+            >
+              {{ isDescriptionExpanded ? $t('View less') : $t('View more') }}
+            </button>
           </div>
 
           <div v-if="specs.length || activeGame.languages?.length" class="game-info__specs">
@@ -554,7 +674,8 @@ watch(
       <section v-if="similar.length" class="game-page__recommended recommended">
         <div class="recommended__top">
           <h2 class="recommended__title _h2">
-            {{ $t('You might also like') }}
+            <div class="recommended__title-desk">{{ $t('You might also like') }}</div>
+            <div class="recommended__title-mob">{{ $t('Recommended') }}</div>
           </h2>
 
           <div class="recommended__line" />
@@ -600,12 +721,9 @@ watch(
     @include adaptiveValue('gap', 56, 24);
 
     @media (max-width: $md3) {
-      gap: 30px;
-    }
-
-    @media (max-width: $md8) {
       display: flex;
       flex-direction: column;
+
       gap: 22px;
     }
   }
@@ -621,10 +739,6 @@ watch(
     @include adaptiveValue('border-radius', 14, 10);
 
     background-color: var(--bg-secondary-color);
-
-    @media (max-width: $md8) {
-      aspect-ratio: 1 / 1;
-    }
   }
 
   &__info {
@@ -665,11 +779,14 @@ watch(
 
     color: var(--seconday-color);
 
-    font-size: 11px;
-    line-height: 14px;
+    @include adaptiveValue('font-size', 11, 10);
+
+    @include adaptiveValue('line-height', 16, 14);
+
     font-weight: 700;
 
-    letter-spacing: 1.5px;
+    @include adaptiveValue('letter-spacing', 1.78, 1.4);
+
     text-transform: uppercase;
 
     &:first-child {
@@ -678,9 +795,6 @@ watch(
 
     @media (max-width: $md8) {
       padding: 4px 8px;
-
-      font-size: 10px;
-      line-height: 13px;
     }
   }
 
@@ -697,7 +811,7 @@ watch(
 
     @include adaptiveValue('line-height', 47, 31);
 
-    letter-spacing: -0.03em;
+    @include adaptiveValue('letter-spacing', -1.32, -0.84);
   }
 
   &__about {
@@ -710,19 +824,43 @@ watch(
   &__label {
     color: var(--seconday-color);
 
-    font-size: 11px;
-    line-height: 15px;
+    @include adaptiveValue('font-size', 11, 10);
 
-    letter-spacing: 2px;
+    @include adaptiveValue('line-height', 15, 14);
+
+    @include adaptiveValue('letter-spacing', 2.2, 2);
+
     text-transform: uppercase;
+  }
 
-    @media (max-width: $md8) {
-      font-size: 10px;
+  &__description-wrapper {
+    position: relative;
+
+    overflow: hidden;
+
+    transition: max-height 0.5s ease;
+
+    &:not(.expanded) {
+      &::after {
+        content: '';
+
+        position: absolute;
+
+        right: 0;
+        bottom: 0;
+        left: 0;
+
+        height: 24px;
+
+        pointer-events: none;
+
+        background: linear-gradient(to bottom, transparent, var(--bg-primary-color));
+      }
     }
   }
 
   &__description {
-    color: var(--seconday-color);
+    color: var(--bg-eight-color);
 
     @include adaptiveValue('font-size', 15, 13);
 
@@ -734,6 +872,39 @@ watch(
       &:not(:last-child) {
         margin-bottom: 10px;
       }
+    }
+  }
+
+  &__description-toggle {
+    width: fit-content;
+
+    padding: 0;
+
+    border: none;
+
+    background-color: transparent;
+
+    color: var(--hint-primary-color);
+
+    font-family: var(--font-open-sans);
+
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: opacity 0.3s ease;
+
+    @media (any-hover: hover) {
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
+    @media (max-width: $md8) {
+      font-size: 12px;
+      line-height: 16px;
     }
   }
 
@@ -820,7 +991,13 @@ watch(
 }
 
 .purchase {
-  padding: 28px 32px;
+  @include adaptiveValue('padding-top', 30, 20);
+
+  @include adaptiveValue('padding-bottom', 30, 20);
+
+  @include adaptiveValue('padding-left', 34, 22);
+
+  @include adaptiveValue('padding-right', 34, 22);
 
   display: flex;
   flex-direction: column;
@@ -832,10 +1009,6 @@ watch(
   @include adaptiveValue('border-radius', 14, 10);
 
   background-color: var(--bg-secondary-color);
-
-  @media (max-width: $md8) {
-    padding: 18px 20px;
-  }
 
   &__top {
     display: flex;
@@ -974,29 +1147,30 @@ watch(
   }
 
   &__delivery {
-    padding-top: 20px;
-
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-
-    border-top: 2px solid var(--border-primary-color);
-
     color: var(--seconday-color);
 
-    font-size: 13px;
-    line-height: 18px;
+    @include adaptiveValue('font-size', 13, 12);
 
-    @media (max-width: $md8) {
-      padding-top: 14px;
+    @include adaptiveValue('line-height', 18, 19.2);
 
-      font-size: 12px;
+    @media (min-width: $md8) {
+      display: flex;
+      align-items: center;
+
+      gap: 12px;
+
+      @include adaptiveValue('padding-top', 22, 18);
+
+      border-top: 2px solid var(--border-primary-color);
     }
   }
 
   &__delivery-icon {
     color: var(--hint-primary-color);
+
+    @media (max-width: $md8) {
+      @include hide-item;
+    }
   }
 }
 
@@ -1014,6 +1188,23 @@ watch(
 
   &__title {
     flex: 0 0 auto;
+    &-desk {
+      @media (max-width: $md8) {
+        @include hide-item;
+      }
+    }
+    &-mob {
+      @media (min-width: $md8) {
+        @include hide-item;
+      }
+      @media (max-width: $md8) {
+        font-size: 22px !important;
+        line-height: 25px !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.66px !important;
+        font-family: var(--font-open-sans) !important;
+      }
+    }
   }
 
   &__line {
@@ -1053,13 +1244,11 @@ watch(
     }
 
     @media (max-width: $md3) {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    @media (max-width: $md8) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-
       gap: 12px;
+      &:last-child {
+        @include hide-item;
+      }
     }
   }
 
