@@ -1,17 +1,20 @@
 import { defineStore } from 'pinia'
 
 import axios from '@/plugins/axios'
-import { useCurrStore } from '@/stores/currencies'
 
 export const useWishListStore = defineStore('wishlist', {
   state: () => ({
-    items: [],
+    items: JSON.parse(localStorage.getItem('wishlist') || '[]'),
     success: '',
     error: '',
     loader: false,
   }),
 
   actions: {
+    save() {
+      localStorage.setItem('wishlist', JSON.stringify(this.items))
+    },
+
     clearMessages() {
       this.success = ''
       this.error = ''
@@ -36,35 +39,15 @@ export const useWishListStore = defineStore('wishlist', {
       }, 3000)
     },
 
-    async get() {
-      const currStore = useCurrStore()
+    async add(product) {
+      const id = typeof product === 'object' ? product.id : product
 
-      if (!currStore.currency?.code) {
-        return []
-      }
-
-      try {
-        const res = await axios.get('user/wishlist/items', {
-          params: {
-            currency: currStore.currency.code,
-          },
-        })
-
-        this.items = Array.isArray(res.data?.payload) ? res.data.payload : []
-
-        return this.items
-      } catch (error) {
-        this.items = []
-
-        this.showError(error, 'Failed to load wishlist')
-
-        return []
-      }
-    },
-
-    async add(id) {
-      if (!id) {
+      if (!id || this.loader) {
         return false
+      }
+
+      if (this.items.some((item) => item.id === id)) {
+        return true
       }
 
       this.clearMessages()
@@ -75,7 +58,15 @@ export const useWishListStore = defineStore('wishlist', {
           id,
         })
 
-        await this.get()
+        if (typeof product === 'object') {
+          this.items.push(product)
+        } else {
+          this.items.push({
+            id,
+          })
+        }
+
+        this.save()
 
         this.showSuccess('Added to wishlist')
 
@@ -89,8 +80,10 @@ export const useWishListStore = defineStore('wishlist', {
       }
     },
 
-    async remove(id) {
-      if (!id) {
+    async remove(product) {
+      const id = typeof product === 'object' ? product.id : product
+
+      if (!id || this.loader) {
         return false
       }
 
@@ -102,7 +95,9 @@ export const useWishListStore = defineStore('wishlist', {
           id,
         })
 
-        await this.get()
+        this.items = this.items.filter((item) => item.id !== id)
+
+        this.save()
 
         this.showSuccess('Removed from wishlist')
 
@@ -114,6 +109,11 @@ export const useWishListStore = defineStore('wishlist', {
       } finally {
         this.loader = false
       }
+    },
+
+    clear() {
+      this.items = []
+      this.save()
     },
   },
 })

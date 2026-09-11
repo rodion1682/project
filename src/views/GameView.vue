@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, toRefs, watch } from 'vue'
+import { computed, ref, toRefs, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -8,9 +8,10 @@ import axios from '@/plugins/axios'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
+import { FavoriteIcon } from '@/components/ui/icons'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
-import { FavoriteIcon } from '@/components/ui/icons'
+import ProductListItem from './ProductPages/components/ProductListItem.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -18,7 +19,6 @@ import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { useLoginModalStore } from '@/stores/loginModal'
 import { useWishListStore } from '@/stores/wishlist'
-import ProductListItem from './ProductPages/components/ProductListItem.vue'
 
 const props = defineProps({
   platform: {
@@ -137,6 +137,14 @@ const breadcrumbs = computed(() => [
   },
 ])
 
+const isInCart = computed(() => {
+  if (!activeGame.value?.id || !cartStore.cart || !Array.isArray(cartStore.cart.products)) {
+    return false
+  }
+
+  return cartStore.cart.products.some((item) => item.id === activeGame.value.id)
+})
+
 const isFavorite = computed(() => {
   if (!activeGame.value?.id || !Array.isArray(wishListStore.items)) {
     return false
@@ -172,69 +180,59 @@ const productTags = computed(() => {
 })
 
 const specs = computed(() => {
-  const game = activeGame.value
+  const product = activeGame.value
 
-  if (!game) {
+  if (!product) {
     return []
   }
 
   const result = []
 
-  if (game.developer) {
+  if (product.developer) {
     result.push({
       label: t('Developer'),
-      value: game.developer,
+      value: product.developer,
     })
   }
 
-  if (game.publisher) {
+  if (product.publisher) {
     result.push({
       label: t('Publisher'),
-      value: game.publisher,
+      value: product.publisher,
     })
   }
 
-  if (game.release_date) {
+  if (product.release_date) {
     result.push({
       label: t('Release date'),
-      value: game.release_date,
+      value: product.release_date,
     })
   }
 
-  if (game.region) {
+  if (product.region) {
     result.push({
       label: t('Region'),
-      value: game.region,
+      value: product.region,
     })
   }
 
-  if (game.activation) {
+  if (product.activation) {
     result.push({
       label: t('Activation'),
-      value: game.activation,
+      value: product.activation,
     })
   }
 
-  if (game.esrb_rating) {
+  if (product.esrb_rating) {
     result.push({
       label: t('Restrictions'),
-      value: game.esrb_rating,
+      value: product.esrb_rating,
     })
   }
 
   return result
 })
 
-const languagesText = computed(() => {
-  if (!Array.isArray(activeGame.value?.languages)) {
-    return ''
-  }
-
-  return activeGame.value.languages
-    .map((lang) => lang.value || lang.additional_value)
-    .filter(Boolean)
-    .join(', ')
-})
 const stripLinks = (html) => {
   if (!html) return ''
 
@@ -288,7 +286,7 @@ const fetchSimilar = async () => {
   }
 }
 
-const addToCart = async () => {
+const toggleCart = async () => {
   if (!authStore.isAuth) {
     loginModalStore.openModal()
     return false
@@ -301,22 +299,48 @@ const addToCart = async () => {
   isCartLoading.value = true
 
   try {
-    await cartStore.add(activeGame.value.id)
+    if (isInCart.value) {
+      await cartStore.remove(activeGame.value.id)
+    } else {
+      await cartStore.add(activeGame.value.id)
+    }
 
-    return !cartStore.error
+    return true
   } finally {
     isCartLoading.value = false
   }
 }
 
 const buyNow = async () => {
-  const added = await addToCart()
-
-  if (!added) {
+  if (!authStore.isAuth) {
+    loginModalStore.openModal()
     return
   }
 
-  router.push('/cart')
+  if (!activeGame.value?.id) {
+    return
+  }
+
+  if (isInCart.value) {
+    router.push('/cart')
+    return
+  }
+
+  if (isCartLoading.value) {
+    return
+  }
+
+  isCartLoading.value = true
+
+  try {
+    await cartStore.add(activeGame.value.id)
+
+    if (!cartStore.error) {
+      router.push('/cart')
+    }
+  } finally {
+    isCartLoading.value = false
+  }
 }
 
 const toggleFavorite = async () => {
@@ -333,9 +357,9 @@ const toggleFavorite = async () => {
 
   try {
     if (isFavorite.value) {
-      await wishListStore.remove(activeGame.value.id)
+      await wishListStore.remove(activeGame.value)
     } else {
-      await wishListStore.add(activeGame.value.id)
+      await wishListStore.add(activeGame.value)
     }
   } finally {
     isFavoriteLoading.value = false
@@ -361,12 +385,6 @@ watch(
     immediate: true,
   },
 )
-
-onMounted(() => {
-  if (authStore.isAuth && !wishListStore.items?.length) {
-    wishListStore.get()
-  }
-})
 </script>
 
 <template>
@@ -375,10 +393,8 @@ onMounted(() => {
       <Breadcrumbs class="game-page__breadcrumbs" :items="breadcrumbs" />
 
       <div v-if="activeGame" class="game-page__main">
-        <div class="game-page__gallery gallery">
-          <div class="gallery__main _ibg">
-            <img v-if="activeGame.image" :src="activeGame.image" :alt="activeGame.title" />
-          </div>
+        <div class="game-page__image _ibg">
+          <img v-if="activeGame.image" :src="activeGame.image" :alt="activeGame.title" />
         </div>
 
         <div class="game-page__info game-info">
@@ -430,12 +446,15 @@ onMounted(() => {
               </BaseButton>
 
               <BaseButton
-                variant="primary"
                 class="purchase__button"
+                :variant="isInCart ? 'bordered' : 'primary'"
+                :icon="isInCart ? 'close' : ''"
                 :disabled="isCartLoading"
-                @click="addToCart"
+                @click="toggleCart"
               >
-                {{ $t('Add to cart') }}
+                <template v-if="!isInCart">
+                  {{ $t('Add to cart') }}
+                </template>
               </BaseButton>
 
               <button
@@ -479,7 +498,7 @@ onMounted(() => {
             <div v-else class="game-info__description" v-html="activeGame.description" />
           </div>
 
-          <div v-if="specs.length || languagesText" class="game-info__specs">
+          <div v-if="specs.length || activeGame.languages?.length" class="game-info__specs">
             <div v-for="spec in specs" :key="spec.label" class="game-info__spec">
               <div class="game-info__spec-label">
                 {{ spec.label }}
@@ -591,8 +610,21 @@ onMounted(() => {
     }
   }
 
-  &__gallery {
-    min-width: 0;
+  &__image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    overflow: hidden;
+
+    border: 2px solid var(--border-primary-color);
+
+    @include adaptiveValue('border-radius', 14, 10);
+
+    background-color: var(--bg-secondary-color);
+
+    @media (max-width: $md8) {
+      aspect-ratio: 1 / 1;
+    }
   }
 
   &__info {
@@ -601,46 +633,6 @@ onMounted(() => {
 
   &__recommended {
     @include adaptiveValue('margin-top', 96, 32);
-  }
-}
-
-.gallery {
-  display: flex;
-  flex-direction: column;
-
-  @include adaptiveValue('gap', 14, 8);
-
-  &__main {
-    position: relative;
-
-    width: 100%;
-    padding-bottom: 75%;
-
-    overflow: hidden;
-
-    border: 2px solid var(--border-primary-color);
-    @include adaptiveValue('border-radius', 14, 10);
-
-    background-color: var(--bg-secondary-color);
-  }
-
-  &__list {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-
-    @include adaptiveValue('gap', 14, 8);
-  }
-
-  &__item {
-    width: 100%;
-    padding-bottom: 75%;
-
-    overflow: hidden;
-
-    border: 2px solid var(--border-primary-color);
-    @include adaptiveValue('border-radius', 10, 8);
-
-    background-color: var(--bg-secondary-color);
   }
 }
 
@@ -668,6 +660,7 @@ onMounted(() => {
     padding: 5px 10px;
 
     border: 2px solid var(--border-primary-color);
+
     border-radius: 6px;
 
     color: var(--seconday-color);
@@ -681,7 +674,6 @@ onMounted(() => {
 
     &:first-child {
       color: var(--hint-primary-color);
-      border-color: var(--border-primary-color);
     }
 
     @media (max-width: $md8) {
@@ -698,9 +690,11 @@ onMounted(() => {
     color: var(--primary-color);
 
     font-family: var(--font-gabarito);
+
     font-weight: 900;
 
     @include adaptiveValue('font-size', 44, 28);
+
     @include adaptiveValue('line-height', 47, 31);
 
     letter-spacing: -0.03em;
@@ -731,6 +725,7 @@ onMounted(() => {
     color: var(--seconday-color);
 
     @include adaptiveValue('font-size', 15, 13);
+
     @include adaptiveValue('line-height', 27, 22);
 
     :deep(p) {
@@ -744,6 +739,7 @@ onMounted(() => {
 
   &__specs {
     display: grid;
+
     grid-template-columns: repeat(2, minmax(0, 1fr));
 
     column-gap: 40px;
@@ -785,6 +781,7 @@ onMounted(() => {
     color: var(--primary-color);
 
     font-size: 14px;
+
     text-align: right;
 
     @media (max-width: $md8) {
@@ -796,16 +793,9 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
 
-    gap: 5px;
-  }
-
-  &__languages-text {
-    margin-left: 5px;
-
-    color: var(--primary-color);
-
-    font-size: 13px;
+    gap: 6px;
   }
 
   &__message {
@@ -817,11 +807,13 @@ onMounted(() => {
 
     &.error {
       color: var(--error-color);
+
       background-color: var(--error-bg-color);
     }
 
     &.success {
       color: var(--success-color);
+
       background-color: var(--bg-sixth-color);
     }
   }
@@ -836,6 +828,7 @@ onMounted(() => {
   @include adaptiveValue('gap', 22, 16);
 
   border: 2px solid var(--border-primary-color);
+
   @include adaptiveValue('border-radius', 14, 10);
 
   background-color: var(--bg-secondary-color);
@@ -864,9 +857,11 @@ onMounted(() => {
     :deep(.price__number),
     :deep(.price__symbol) {
       font-family: var(--font-gabarito);
+
       font-weight: 900;
 
       @include adaptiveValue('font-size', 44, 30);
+
       line-height: 1;
     }
   }
@@ -908,6 +903,7 @@ onMounted(() => {
 
   &__actions {
     display: grid;
+
     grid-template-columns:
       minmax(0, 1fr)
       minmax(0, 1fr)
@@ -935,6 +931,7 @@ onMounted(() => {
     justify-content: center;
 
     border: 2px solid var(--border-primary-color);
+
     border-radius: 10px;
 
     background-color: transparent;
@@ -945,11 +942,11 @@ onMounted(() => {
 
     transition:
       color 0.3s ease,
-      border-color 0.3s ease,
-      background-color 0.3s ease;
+      border-color 0.3s ease;
 
     &.active {
       color: var(--hint-primary-color);
+
       border-color: var(--hint-primary-color);
     }
 
@@ -961,6 +958,7 @@ onMounted(() => {
     @media (any-hover: hover) {
       &:hover {
         color: var(--hint-primary-color);
+
         border-color: var(--hint-primary-color);
       }
     }
@@ -994,7 +992,6 @@ onMounted(() => {
       padding-top: 14px;
 
       font-size: 12px;
-      line-height: 18px;
     }
   }
 
@@ -1046,6 +1043,7 @@ onMounted(() => {
 
   &__list {
     display: grid;
+
     grid-template-columns: repeat(5, minmax(0, 1fr));
 
     gap: 20px;
