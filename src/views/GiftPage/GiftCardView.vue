@@ -1,253 +1,1147 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { useI18n } from 'vue-i18n'
+
+import BaseButton from '@/components/ui/BaseButton.vue'
+import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import ProductListItem from '@/views/ProductPages/components/ProductListItem.vue'
+
+import { useAuthStore } from '@/stores/auth'
 import { useCurrStore } from '@/stores/currencies'
 import { useGiftCardStore } from '@/stores/giftCard'
-import { useCountriesStore } from '@/stores/countries'
-import { useStaticStore } from '@/stores/static.js'
+import { useLoginModalStore } from '@/stores/loginModal'
+import { useProductsStore } from '@/stores/products'
+import { useProfileStore } from '@/stores/profile'
 
+const { t } = useI18n()
+
+const authStore = useAuthStore()
 const currStore = useCurrStore()
 const giftCardStore = useGiftCardStore()
-const countriesStore = useCountriesStore()
-const staticStore = useStaticStore()
+const loginModalStore = useLoginModalStore()
+const productsStore = useProductsStore()
+const profileStore = useProfileStore()
 
-const amount = ref()
-const quantity = ref()
-const holderFirstName = ref()
-const holderLastName = ref()
-const holderEmail = ref()
-const holderPhone = ref()
-const holderPhoneCountry = ref('AS')
-const holderCountry = ref('AS')
-const holderCity = ref()
-const holderAddress = ref()
-const holderZip = ref()
+const baseValues = [10, 25, 50, 100, 250, 500]
 
-const terms = ref(false)
+const amount = ref(50)
+const deliveryType = ref('friend')
+
+const recipientEmail = ref('')
+const message = ref('')
+
+const isSubmitting = ref(false)
+const isPopularLoading = ref(false)
+
+const popularProducts = ref([])
+
+const breadcrumbs = computed(() => [
+  {
+    title: t('Home'),
+    link: '/',
+  },
+  {
+    title: t('Gift card'),
+  },
+])
+
+const currencySymbol = computed(() => {
+  return currStore.currency?.symbol || '€'
+})
+
+const currencyRate = computed(() => {
+  const value = Number(currStore.currency?.value)
+
+  return Number.isFinite(value) && value > 0 ? value : 1
+})
+
+const convertedAmount = computed(() => {
+  return Number(amount.value || 0) * currencyRate.value
+})
+
+const formattedAmount = computed(() => {
+  return `${convertedAmount.value.toFixed(2)} ${currencySymbol.value}`
+})
+
+const shortAmount = (baseValue) => {
+  const converted = Number(baseValue || 0) * currencyRate.value
+
+  return `${converted.toFixed(2)} ${currencySymbol.value}`
+}
+
+const canSubmit = computed(() => {
+  if (!amount.value) {
+    return false
+  }
+
+  if (deliveryType.value === 'friend' && !recipientEmail.value.trim()) {
+    return false
+  }
+
+  return true
+})
+
+const perks = computed(() => [
+  {
+    kicker: t('Instant'),
+    title: t('Code in the inbox in a minute'),
+    text: t('No shipping, no waiting — buy it five minutes before the party.'),
+  },
+  {
+    kicker: t('No expiry'),
+    title: t('Credit that never runs out'),
+    text: t('The value sits on the balance until it is spent, whatever the year.'),
+  },
+  {
+    kicker: t('Any title'),
+    title: t('Spend it on anything in store'),
+    text: t('Keys, DLC, in-game currency — the recipient decides, not you.'),
+  },
+])
+
+const selectAmount = (value) => {
+  amount.value = value
+}
+
+const fetchPopularProducts = async () => {
+  const currency = currStore.currency?.code
+
+  if (!currency || isPopularLoading.value) {
+    return
+  }
+
+  isPopularLoading.value = true
+
+  try {
+    await productsStore.getProducts(null, 1, '', '', 5)
+
+    popularProducts.value = Array.isArray(productsStore.products)
+      ? productsStore.products.slice(0, 5)
+      : []
+  } catch (error) {
+    popularProducts.value = []
+
+    console.error('Failed to load popular products:', error)
+  } finally {
+    isPopularLoading.value = false
+  }
+}
+
+const submitGiftCard = async () => {
+  if (!authStore.isAuth) {
+    loginModalStore.openModal()
+    return
+  }
+
+  if (!canSubmit.value || isSubmitting.value) {
+    return
+  }
+
+  isSubmitting.value = true
+
+  try {
+    const profile = profileStore.profile || {}
+
+    const email =
+      deliveryType.value === 'friend' ? recipientEmail.value.trim() : profile.email || ''
+
+    await giftCardStore.submit(
+      Number(amount.value),
+      1,
+      profile.name || '',
+      profile.surname || '',
+      email,
+      profile.phone || '',
+      profile.phone_country || '',
+      profile.country || '',
+      profile.city || '',
+      profile.address || '',
+      profile.zip || '',
+    )
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+watch(
+  () => currStore.currency?.code,
+  (currency, oldCurrency) => {
+    if (!currency || currency === oldCurrency) {
+      return
+    }
+
+    fetchPopularProducts()
+  },
+  {
+    immediate: true,
+  },
+)
 
 watch(
   () => giftCardStore.success,
-  () => {
-    if (giftCardStore.success) {
-      amount.value = null
-      quantity.value = null
-      holderFirstName.value = null
-      holderLastName.value = null
-      holderEmail.value = null
-      holderPhone.value = null
-      holderPhoneCountry.value = null
-      holderCountry.value = null
-      holderCity.value = null
-      holderAddress.value = null
-      holderZip.value = null
+  (success) => {
+    if (!success) {
+      return
     }
+
+    recipientEmail.value = ''
+    message.value = ''
+    amount.value = 50
+    deliveryType.value = 'friend'
   },
 )
 </script>
 
 <template>
-  <main class="main">
-    <div class="section breadcrumbs-section">
-      <div class="wrapper flex">
-        <RouterLink to="/" class="text text-14 text-white">{{ $t('Home') }}</RouterLink>
-        <div class="text text-14 text-white">/</div>
-        <div class="text text-14 text-pink">{{ $t('Gift card') }}</div>
-      </div>
-    </div>
-    <div class="section gift-card-section">
-      <div class="wrapper flex justify-between flex-wrap text-center">
-        <div class="gift-card-left">
-          <div class="text text-32 text-russo">
-            {{ $t('Give the gift of gaming with GearMikey gift cards.') }}
-          </div>
-          <div class="text text-18">
-            {{
-              $t(
-                'Look no further than our GearMikey gift cards! Our gift cards can be used to purchase any game key on our website, allowing your loved ones to choose the games they really want to play. ',
-              )
-            }}
-          </div>
-          <div class="text text-18">
-            {{
-              $t(
-                'Plus, with our fast and reliable delivery, our gift cards make great last-minute presents.',
-              )
-            }}
-          </div>
-        </div>
-        <div class="gift-card-right">
-          <div class="text text-24 text-russo text-center">{{ $t('Gift card') }}</div>
-          <form
-            class="form"
-            @submit.prevent="
-              giftCardStore.submit(
-                amount,
-                quantity,
-                holderFirstName,
-                holderLastName,
-                holderEmail,
-                holderPhone,
-                holderPhoneCountry,
-                holderCountry,
-                holderCity,
-                holderAddress,
-                holderZip,
-              )
-            "
-          >
-            <label class="label flex items-center">
-              <div class="input-container" v-if="currStore.currency">
-                <div class="text text-18 text-pink uppercase input-curr">
-                  {{ currStore.currency.code }}
+  <main class="gift-page">
+    <div class="gift-page__container _cnt-home">
+      <Breadcrumbs :items="breadcrumbs" class="gift-page__breadcrumbs" />
+
+      <h1 class="gift-page__title _h2">
+        {{ $t('Gift card') }}
+      </h1>
+
+      <div class="gift-page__main">
+        <div class="gift-page__left">
+          <div class="gift-card-preview">
+            <img src="@/assets/img/gift-card-bg.jpg" alt="" class="gift-card-preview__image" />
+
+            <div class="gift-card-preview__overlay"></div>
+
+            <div class="gift-card-preview__content">
+              <div class="gift-card-preview__brand">
+                <div class="gift-card-preview__brand-icon _ibg-contain">
+                  <img src="@/assets/img/person.svg" alt="" />
                 </div>
 
-                <input
-                  class="pass"
-                  type="text"
-                  :placeholder="$t('Preferred amount')"
-                  v-model="amount"
-                />
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Quantity')" v-model="quantity" />
-              </div>
-            </label>
-
-            <div class="label flex items-center holder-name">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Name')" v-model="holderFirstName" />
+                <div class="gift-card-preview__brand-name">
+                  <strong>
+                    {{ $t('KEY') }}
+                  </strong>
+                  {{ $t('VAULT') }}
+                </div>
               </div>
 
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Surname')" v-model="holderLastName" />
-              </div>
-            </div>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('E-mail')" v-model="holderEmail" />
-              </div>
-            </label>
-
-            <div class="label flex items-center holder-phone">
-              <div class="input-container" v-if="countriesStore.countries">
-                <select class="select" v-model="holderPhoneCountry">
-                  <option v-for="(item, i) in countriesStore.countries" :value="item.iso" :key="i">
-                    +{{ item.phone_code }}
-                  </option>
-                </select>
-              </div>
-
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Phone')" v-model="holderPhone" />
-              </div>
-            </div>
-
-            <label class="label flex items-center">
-              <div class="input-container" v-if="countriesStore.countries">
-                <select class="select" v-model="holderCountry">
-                  <option v-for="(item, i) in countriesStore.countries" :value="item.iso" :key="i">
-                    {{ $t(item.title) }}
-                  </option>
-                </select>
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('City')" v-model="holderCity" />
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Address')" v-model="holderAddress" />
-              </div>
-            </label>
-
-            <label class="label flex items-center">
-              <div class="input-container">
-                <input type="text" :placeholder="$t('Post code')" v-model="holderZip" />
-              </div>
-            </label>
-            <div class="flex items-center justify-between button-container">
-              <div class="label">
-                <label class="checkbox-label flex justify-center flex-wrap items-center">
-                  <input type="checkbox" v-model="terms" />
-
-                  <div class="dot"></div>
-
-                  <div class="text text-16" v-if="staticStore.static && staticStore.static.length">
-                    {{ $t('I’ve read and agree with') }}
-                    <RouterLink
-                      :to="
-                        '/static/' +
-                        staticStore.static
-                          .find((item) => item.is_terms)
-                          .title.toLowerCase()
-                          .replace(/ /g, '-')
-                      "
-                      class="text-sky-blue weight-700"
-                      >{{ $t('T&Cs') }}</RouterLink
-                    >
-                    {{ $t('and') }}
-                    <RouterLink
-                      :to="
-                        '/static/' +
-                        staticStore.static
-                          .find((item) => item.is_privacy)
-                          .title.toLowerCase()
-                          .replace(/ /g, '-')
-                      "
-                      class="text-sky-blue weight-700"
-                      >{{
-                        $t('Privacy Policy')
-                      }}</RouterLink
-                    >
+              <div class="gift-card-preview__bottom">
+                <div>
+                  <div class="gift-card-preview__label">
+                    {{ $t('Gift card') }}
                   </div>
-                </label>
+
+                  <div class="gift-card-preview__value">
+                    {{ formattedAmount }}
+                  </div>
+                </div>
+
+                <div class="gift-card-preview__code">KV-0000-0000</div>
               </div>
+            </div>
+          </div>
+
+          <p class="gift-page__description">
+            {{
+              $t(
+                'A YOURKEYS gift card lands on any balance as pure credit — the recipient spends it on whatever they want, whenever they want. Codes arrive by email within a minute of purchase and never expire.',
+              )
+            }}
+          </p>
+
+          <div class="gift-page__perks">
+            <div v-for="perk in perks" :key="perk.kicker" class="gift-perk">
+              <div class="gift-perk__kicker">
+                {{ perk.kicker }}
+              </div>
+
+              <div class="gift-perk__title">
+                {{ perk.title }}
+              </div>
+
+              <div class="gift-perk__text">
+                {{ perk.text }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form class="gift-form" @submit.prevent="submitGiftCard">
+          <h2 class="gift-form__title">
+            {{ $t('Buy a gift card') }}
+          </h2>
+
+          <div class="gift-form__section">
+            <div class="gift-form__field-label">
+              <span>*</span>
+              {{ $t('Value') }}
+            </div>
+
+            <div class="gift-form__values">
+              <button
+                v-for="value in baseValues"
+                :key="value"
+                type="button"
+                class="gift-form__value"
+                :class="{
+                  active: amount === value,
+                }"
+                @click="selectAmount(value)"
+              >
+                {{ shortAmount(value) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="gift-form__section">
+            <div class="gift-form__field-label">
+              <span>*</span>
+              {{ $t('Deliver to') }}
+            </div>
+
+            <div class="gift-form__delivery">
+              <button
+                type="button"
+                class="gift-form__delivery-button"
+                :class="{
+                  active: deliveryType === 'friend',
+                }"
+                @click="deliveryType = 'friend'"
+              >
+                {{ $t("A friend's email") }}
+              </button>
 
               <button
-                :class="[
-                  'button colored w-150',
-                  {
-                    disabled:
-                      !amount ||
-                      !quantity ||
-                      !holderFirstName ||
-                      !holderLastName ||
-                      !holderEmail ||
-                      !holderPhone ||
-                      !holderCountry ||
-                      !holderCity ||
-                      !holderAddress ||
-                      !holderZip ||
-                      !terms,
-                  },
-                ]"
-                type="submit"
+                type="button"
+                class="gift-form__delivery-button"
+                :class="{
+                  active: deliveryType === 'balance',
+                }"
+                @click="deliveryType = 'balance'"
               >
-                <span>{{ $t('PAY') }}</span>
+                {{ $t('My balance') }}
               </button>
+            </div>
+          </div>
+
+          <div v-if="deliveryType === 'friend'" class="gift-form__fields">
+            <label class="gift-form__field">
+              <span class="gift-form__input-label">
+                {{ $t('Recipient email') }}
+              </span>
+
+              <input
+                v-model.trim="recipientEmail"
+                type="email"
+                class="gift-form__input"
+                placeholder="friend@example.com"
+                required
+              />
+            </label>
+
+            <label class="gift-form__field gift-form__field_message">
+              <span class="gift-form__input-label">
+                {{ $t('Message (optional)') }}
+              </span>
+
+              <textarea
+                v-model="message"
+                class="gift-form__textarea"
+                :placeholder="$t('Happy birthday — go pick something.')"
+              ></textarea>
+            </label>
+          </div>
+
+          <div class="gift-form__checkout">
+            <div class="gift-form__total">
+              <span>
+                {{ $t('Total to pay') }}
+              </span>
+
+              <strong>
+                {{ formattedAmount }}
+              </strong>
+            </div>
+
+            <p class="gift-form__terms">
+              {{ $t('By continuing you accept our') }}
+
+              <RouterLink to="/static/terms-and-conditions">
+                {{ $t('Terms & Conditions') }}
+              </RouterLink>
+
+              {{ $t('and') }}
+
+              <RouterLink to="/static/privacy-policy">
+                {{ $t('Privacy Notice') }} </RouterLink
+              >.
+            </p>
+
+            <div class="gift-form__actions">
+              <BaseButton
+                type="submit"
+                variant="secondary"
+                class="gift-form__buy"
+                :disabled="!canSubmit || isSubmitting"
+              >
+                {{ $t('Buy from balance') }}
+              </BaseButton>
+
+              <BaseButton
+                type="button"
+                class="gift-form__cart"
+                :disabled="!canSubmit || isSubmitting"
+              >
+                {{ $t('Add to cart') }}
+              </BaseButton>
             </div>
 
             <Transition>
-              <div class="text text-14 text-red text-error" v-if="giftCardStore.error">
+              <div v-if="giftCardStore.error" class="gift-form__message error">
                 {{ $t(giftCardStore.error) }}
               </div>
             </Transition>
 
             <Transition>
-              <div class="text text-14 text-green text-error" v-if="giftCardStore.success">
+              <div v-if="giftCardStore.success" class="gift-form__message success">
                 {{ $t(giftCardStore.success) }}
               </div>
             </Transition>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
+
+      <section v-if="popularProducts.length" class="gift-page__recommended recommended">
+        <div class="recommended__top">
+          <h2 class="recommended__title _h2">
+            <div class="recommended__title-desk">
+              {{ $t('Popular right now') }}
+            </div>
+
+            <div class="recommended__title-mob">
+              {{ $t('Popular right now') }}
+            </div>
+          </h2>
+
+          <div class="recommended__line"></div>
+
+          <RouterLink to="/products/all/all" class="recommended__link">
+            {{ $t('All keys') }}
+          </RouterLink>
+        </div>
+
+        <div class="recommended__list">
+          <ProductListItem
+            v-for="item in popularProducts"
+            :key="item.id"
+            :item="item"
+            class="recommended__item"
+          />
+        </div>
+      </section>
     </div>
   </main>
 </template>
+
+<style scoped lang="scss">
+@use '@/assets/styles/mixins' as *;
+@use '@/assets/styles/media' as *;
+@use '@/assets/styles/classes' as *;
+
+.gift-page {
+  @include header-indent;
+  @include adaptiveValue('padding-top', 22, 14);
+  @include adaptiveValue('padding-bottom', 100, 32);
+
+  &__breadcrumbs {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 14, 8);
+    }
+  }
+
+  &__title {
+    margin: 0;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 42, 18);
+    }
+  }
+
+  &__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(420px, 1fr);
+
+    @include adaptiveValue('gap', 56, 28);
+
+    align-items: start;
+
+    @media (max-width: $md3) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__left {
+    min-width: 0;
+  }
+
+  &__description {
+    max-width: 720px;
+
+    margin: 0;
+
+    color: var(--bg-eight-color);
+
+    @include adaptiveValue('font-size', 15, 13);
+    @include adaptiveValue('line-height', 27, 22);
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 30, 20);
+    }
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__perks {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 20, 12);
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__recommended {
+    @include adaptiveValue('margin-top', 96, 40);
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+}
+
+/* =========================================================
+   GIFT CARD PREVIEW
+========================================================= */
+
+.gift-card-preview {
+  position: relative;
+
+  width: 100%;
+  @include adaptiveValue('height', 280, 180);
+
+  overflow: hidden;
+
+  border: 2px solid var(--hint-primary-color);
+  @include adaptiveValue('border-radius', 18, 12);
+
+  background-color: var(--bg-secondary-color);
+
+  &:not(:last-child) {
+    @include adaptiveValue('margin-bottom', 30, 18);
+  }
+
+  &__image {
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    opacity: 0.42;
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+
+    background: linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.97) 5%,
+      rgba(255, 255, 255, 0.76) 58%,
+      rgba(255, 255, 255, 0.28) 100%
+    );
+
+    @media (max-width: $md8) {
+      background: linear-gradient(
+        160deg,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(255, 255, 255, 0.97) 100%
+      );
+    }
+  }
+
+  &__content {
+    position: relative;
+    z-index: 2;
+
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    @include adaptiveValue('padding-top', 40, 20);
+    @include adaptiveValue('padding-right', 44, 20);
+    @include adaptiveValue('padding-bottom', 40, 20);
+    @include adaptiveValue('padding-left', 44, 20);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+
+    @include adaptiveValue('gap', 13, 8);
+  }
+
+  &__brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @include adaptiveValue('width', 25, 18);
+    @include adaptiveValue('height', 25, 18);
+
+    color: var(--hint-primary-color);
+
+    border: 2px solid var(--hint-primary-color);
+    border-radius: 7px;
+
+    @include adaptiveValue('font-size', 12, 9);
+  }
+
+  &__brand-name {
+    color: var(--primary-color);
+
+    @include adaptiveValue('font-size', 19, 15);
+    @include adaptiveValue('letter-spacing', 2.6, 2);
+
+    strong {
+      font-weight: 700;
+    }
+  }
+
+  &__bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 20px;
+  }
+
+  &__label {
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 11, 10);
+    @include adaptiveValue('letter-spacing', 2.2, 2);
+
+    text-transform: uppercase;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 8, 5);
+    }
+  }
+
+  &__value {
+    color: var(--primary-color);
+
+    font-family: var(--font-gabarito);
+    font-weight: 900;
+
+    @include adaptiveValue('font-size', 56, 38);
+
+    line-height: 1;
+
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__code {
+    color: var(--seconday-color);
+
+    font-size: 12px;
+    letter-spacing: 1.8px;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+}
+
+/* =========================================================
+   PERKS
+========================================================= */
+
+.gift-perk {
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 10, 8);
+
+  border: 2px solid var(--border-primary-color);
+  border-radius: 14px;
+
+  background-color: var(--bg-secondary-color);
+
+  @include adaptiveValue('padding-top', 26, 18);
+  @include adaptiveValue('padding-right', 28, 18);
+  @include adaptiveValue('padding-bottom', 26, 18);
+  @include adaptiveValue('padding-left', 28, 18);
+
+  &__kicker {
+    color: var(--hint-primary-color);
+
+    font-size: 11px;
+    line-height: 15px;
+
+    letter-spacing: 2.2px;
+
+    text-transform: uppercase;
+  }
+
+  &__title {
+    color: var(--primary-color);
+
+    font-size: 15px;
+    line-height: 21px;
+
+    font-weight: 500;
+  }
+
+  &__text {
+    color: var(--seconday-color);
+
+    font-size: 12px;
+    line-height: 20px;
+  }
+}
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.gift-form {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 28, 18);
+
+  border: 2px solid var(--border-primary-color);
+
+  @include adaptiveValue('border-radius', 14, 10);
+
+  background-color: var(--bg-secondary-color);
+
+  @include adaptiveValue('padding-top', 36, 20);
+  @include adaptiveValue('padding-right', 40, 16);
+  @include adaptiveValue('padding-bottom', 40, 20);
+  @include adaptiveValue('padding-left', 40, 16);
+
+  @media (max-width: $md3) {
+    border: none;
+    padding-left: 0;
+    padding-right: 0;
+    background-color: transparent;
+  }
+
+  &__title {
+    margin: 0;
+
+    color: var(--primary-color);
+
+    font-family: var(--font-gabarito);
+    font-weight: 900;
+
+    @include adaptiveValue('font-size', 26, 20);
+    @include adaptiveValue('line-height', 31, 25);
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+
+    @include adaptiveValue('gap', 12, 10);
+  }
+
+  &__field-label {
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 13, 12);
+
+    span {
+      color: var(--hint-primary-color);
+    }
+  }
+
+  &__values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 10, 8);
+  }
+
+  &__value {
+    width: 100%;
+
+    @include adaptiveValue('height', 54, 48);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid var(--primary-color);
+    border-radius: 10px;
+
+    background-color: transparent;
+
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 15, 13);
+
+    font-family: inherit;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+      color 0.3s ease,
+      border-color 0.3s ease,
+      background-color 0.3s ease;
+
+    &.active {
+      color: var(--hint-primary-color);
+      border-color: var(--hint-primary-color);
+      background-color: var(--bg-secondary-color);
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        color: var(--hint-primary-color);
+        border-color: var(--hint-primary-color);
+      }
+    }
+  }
+
+  &__delivery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 6px;
+
+    padding: 5px;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 10px;
+
+    background-color: var(--bg-primary-color);
+  }
+
+  &__delivery-button {
+    min-width: 0;
+
+    border: none;
+    border-radius: 8px;
+
+    background-color: transparent;
+
+    color: var(--seconday-color);
+
+    @include adaptiveValue('padding-top', 12, 11);
+    @include adaptiveValue('padding-bottom', 12, 11);
+
+    @include adaptiveValue('font-size', 13, 12);
+
+    font-family: inherit;
+
+    cursor: pointer;
+
+    transition:
+      color 0.3s ease,
+      background-color 0.3s ease;
+
+    &.active {
+      color: var(--light-color);
+      background-color: var(--hint-primary-color);
+
+      font-weight: 600;
+    }
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+
+    @include adaptiveValue('gap', 20, 16);
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+
+    gap: 9px;
+
+    &_message {
+      @media (max-width: $md8) {
+        display: none;
+      }
+    }
+  }
+
+  &__input-label {
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 12, 11);
+
+    @include adaptiveValue('letter-spacing', 1.44, 1.32);
+
+    text-transform: uppercase;
+  }
+
+  &__input,
+  &__textarea {
+    width: 100%;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 10px;
+
+    outline: none;
+
+    background-color: var(--bg-primary-color);
+
+    color: var(--primary-color);
+
+    font-family: inherit;
+
+    @include adaptiveValue('font-size', 15, 14);
+
+    transition: border-color 0.3s ease;
+
+    &::placeholder {
+      color: var(--seconday-color);
+    }
+
+    &:focus {
+      border-color: var(--hint-primary-color);
+    }
+  }
+
+  &__input {
+    @include adaptiveValue('height', 50, 48);
+
+    @include adaptiveValue('padding-left', 16, 14);
+    @include adaptiveValue('padding-right', 16, 14);
+  }
+
+  &__textarea {
+    resize: none;
+
+    @include adaptiveValue('min-height', 96, 76);
+
+    @include adaptiveValue('padding', 16, 14);
+  }
+
+  &__checkout {
+    display: flex;
+    flex-direction: column;
+
+    @include adaptiveValue('gap', 18, 14);
+
+    @include adaptiveValue('padding-top', 22, 16);
+
+    border-top: 2px solid var(--border-primary-color);
+
+    @media (max-width: $md8) {
+      border-top: none;
+      padding-top: 0;
+    }
+  }
+
+  &__total {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+
+    span {
+      color: var(--primary-color);
+
+      font-size: 14px;
+    }
+
+    strong {
+      color: var(--primary-color);
+
+      font-family: var(--font-gabarito);
+      font-weight: 900;
+
+      @include adaptiveValue('font-size', 34, 28);
+
+      line-height: 1;
+    }
+  }
+
+  &__terms {
+    margin: 0;
+
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 12, 11);
+    @include adaptiveValue('line-height', 20, 18);
+
+    a {
+      color: var(--hint-primary-color);
+
+      transition: opacity 0.3s ease;
+
+      @media (any-hover: hover) {
+        &:hover {
+          opacity: 0.7;
+        }
+      }
+    }
+  }
+
+  &__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    @include adaptiveValue('gap', 14, 10);
+
+    @media (max-width: $md8) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__buy {
+    width: 100%;
+  }
+
+  &__cart {
+    min-width: 140px;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__message {
+    padding: 10px 12px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+
+    &.error {
+      color: var(--error-color);
+      background-color: var(--error-bg-color);
+    }
+
+    &.success {
+      color: var(--success-color);
+      background-color: var(--bg-sixth-color);
+    }
+  }
+}
+
+/* =========================================================
+   RECOMMENDED
+   SAME STRUCTURE AS GAME VIEW
+========================================================= */
+
+.recommended {
+  &__top {
+    display: flex;
+    align-items: baseline;
+
+    gap: 28px;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 28, 16);
+    }
+  }
+
+  &__title {
+    flex: 0 0 auto;
+
+    &-desk {
+      @media (max-width: $md8) {
+        @include hide-item;
+      }
+    }
+
+    &-mob {
+      @media (min-width: $md8) {
+        @include hide-item;
+      }
+
+      @media (max-width: $md8) {
+        font-size: 22px !important;
+        line-height: 25px !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.66px !important;
+        font-family: var(--font-open-sans) !important;
+      }
+    }
+  }
+
+  &__line {
+    flex: 1 1 auto;
+
+    height: 1px;
+
+    background: linear-gradient(to right, var(--border-primary-color), transparent);
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__link {
+    flex: 0 0 auto;
+
+    color: var(--hint-primary-color);
+
+    font-size: 13px;
+    font-weight: 600;
+
+    @media (max-width: $md8) {
+      display: none;
+    }
+  }
+
+  &__list {
+    display: grid;
+
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+
+    gap: 20px;
+
+    @media (max-width: $md2) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md3) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      gap: 12px;
+    }
+  }
+
+  &__item {
+    min-width: 0;
+  }
+}
+</style>
