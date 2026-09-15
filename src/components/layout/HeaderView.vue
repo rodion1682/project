@@ -1,4 +1,7 @@
 <script setup>
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
+
 import router from '@/router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -10,18 +13,18 @@ import { useProfileStore } from '@/stores/profile'
 import { useRegModalStore } from '@/stores/regModal'
 import { useWishListStore } from '@/stores/wishlist'
 
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { initDynamicAdapt } from '@/utils/dynamic_adapt.js'
 
 import CurrencySelector from '../CurrencySelector.vue'
 import LanguageSelector from '../LanguageSelector.vue'
 import MenuView from '../MenuView.vue'
+
 import BaseButton from '../ui/BaseButton.vue'
 import BaseInput from '../ui/BaseInput.vue'
-import { CartIcon, FavoriteIcon, SearchIcon } from '../ui/icons/index.js'
-import SvgIcon from '../ui/icons/SvgIcon.vue'
 
-import { initDynamicAdapt } from '@/utils/dynamic_adapt.js'
+import { CartIcon, FavoriteIcon, SearchIcon } from '../ui/icons/index.js'
+
+import SvgIcon from '../ui/icons/SvgIcon.vue'
 
 const loginModalStore = useLoginModalStore()
 const regModalStore = useRegModalStore()
@@ -33,15 +36,19 @@ const wishListStore = useWishListStore()
 const currStore = useCurrStore()
 
 const headerRef = ref(null)
+
 const isMobileNavMenuVisible = ref(false)
 
 const search = ref(String(router.currentRoute.value.query.search || ''))
 
 let headerResizeObserver = null
 let searchTimeout = null
+let destroyDynamicAdapt = null
 
 const updateHeaderHeight = () => {
-  if (!headerRef.value) return
+  if (!headerRef.value) {
+    return
+  }
 
   document.documentElement.style.setProperty('--header-height', `${headerRef.value.offsetHeight}px`)
 }
@@ -103,6 +110,7 @@ watch(search, (value) => {
 
   if (sanitized !== value) {
     search.value = sanitized
+
     return
   }
 
@@ -129,7 +137,7 @@ watch(isMobileNavMenuVisible, (isOpen) => {
 })
 
 onMounted(() => {
-  initDynamicAdapt('max')
+  destroyDynamicAdapt = initDynamicAdapt('max')
 
   updateHeaderHeight()
 
@@ -149,6 +157,12 @@ onBeforeUnmount(() => {
 
   if (headerResizeObserver) {
     headerResizeObserver.disconnect()
+    headerResizeObserver = null
+  }
+
+  if (destroyDynamicAdapt) {
+    destroyDynamicAdapt()
+    destroyDynamicAdapt = null
   }
 
   document.documentElement.style.removeProperty('--header-height')
@@ -296,7 +310,7 @@ onBeforeUnmount(() => {
   right: 0;
   left: 0;
   max-width: 100vw;
-  min-width: 320px;
+  min-width: 390px;
   width: 100%;
   z-index: var(--header-z-index);
   transition: all 0.3s ease 0s;
