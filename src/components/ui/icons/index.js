@@ -2,6 +2,12 @@ export const FavoriteIcon = `
 <svg data-dc-tpl="23" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="24" d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"></path></svg>
 `
 
+export const FavoriteFilledIcon = `
+<svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12.0417 7.79167C13.1042 6.72917 14.1667 5.525 14.1667 3.89583C14.1667 2.86259 13.7562 1.87167 13.0256 1.14106C12.295 0.410453 11.3041 0 10.2708 0C8.99583 0 8.14583 0.354167 7.08333 1.41667C6.02083 0.354167 5.17083 0 3.89583 0C2.86259 0 1.87167 0.410453 1.14106 1.14106C0.410453 1.87167 0 2.86259 0 3.89583C0 5.525 1.0625 6.72917 2.125 7.79167L7.08333 12.75L12.0417 7.79167Z" fill="currentColor"/>
+</svg>
+`
+
 export const CartIcon = `
 <svg data-dc-tpl="26" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path data-dc-tpl="27" d="M6 6h15l-1.6 9H7.5L6 6ZM6 6 5 3H2"></path><circle data-dc-tpl="28" cx="9" cy="20" r="1.6"></circle><circle data-dc-tpl="29" cx="18" cy="20" r="1.6"></circle></svg>
 `

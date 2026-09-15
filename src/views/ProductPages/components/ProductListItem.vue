@@ -6,7 +6,7 @@ import { useLoginModalStore } from '@/stores/loginModal'
 import { useWishListStore } from '@/stores/wishlist'
 
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
-import { FavoriteIcon } from '@/components/ui/icons'
+import { FavoriteFilledIcon, FavoriteIcon } from '@/components/ui/icons'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
 const props = defineProps({
@@ -95,7 +95,10 @@ const toggleFavorite = async () => {
         :disabled="isLoading"
         @click.prevent.stop="toggleFavorite"
       >
-        <SvgIcon :icon="FavoriteIcon" class="product-list-item__favorite-icon" />
+        <SvgIcon
+          :icon="isFavorite ? FavoriteFilledIcon : FavoriteIcon"
+          class="product-list-item__favorite-icon"
+        />
       </button>
     </div>
 

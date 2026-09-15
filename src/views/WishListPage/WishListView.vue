@@ -1,94 +1,368 @@
 <script setup>
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
 import { useWishListStore } from '@/stores/wishlist'
-import ProductItem from '../components/ProductItem.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useLoginModalStore } from '@/stores/loginModal'
+
+import BaseButton from '@/components/ui/BaseButton.vue'
+import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+import { FavoriteFilledIcon } from '@/components/ui/icons/index.js'
+import { useI18n } from 'vue-i18n'
+import WishlistProductItem from './components/WishlistProductItem.vue'
+
+const { t } = useI18n()
 
 const wishListStore = useWishListStore()
-const authStore = useAuthStore()
-const loginModalStore = useLoginModalStore()
+const router = useRouter()
 
-function addToFavorites(id) {
-  if (authStore.isAuth) {
-    if (wishListStore.items.some((obj) => obj.id == id)) {
-      wishListStore.remove(id)
-    } else {
-      wishListStore.add(id)
+const isClearing = ref(false)
+
+const breadcrumbs = computed(() => [
+  {
+    title: t('Home'),
+    link: '/',
+  },
+  {
+    title: t('Wishlist'),
+  },
+])
+
+const products = computed(() => {
+  return Array.isArray(wishListStore.items) ? wishListStore.items : []
+})
+
+const productsCount = computed(() => {
+  return products.value.length
+})
+
+const priceDroppedCount = computed(() => {
+  return products.value.filter((product) => {
+    const oldPrice = product?.old_price ?? product?.oldPrice ?? product?.price_old ?? null
+
+    if (!oldPrice) {
+      return false
     }
-  } else {
-    loginModalStore.openModal()
+
+    return Number(oldPrice) > Number(product?.price || 0)
+  }).length
+})
+
+const clearWishlist = async () => {
+  if (!products.value.length || isClearing.value) {
+    return
+  }
+
+  isClearing.value = true
+
+  const ids = products.value.map((product) => product.id).filter(Boolean)
+
+  try {
+    for (const id of ids) {
+      await wishListStore.remove(id)
+    }
+  } finally {
+    isClearing.value = false
   }
 }
+
+const browseCatalog = () => {
+  router.push('/products')
+}
 </script>
+
 <template>
-  <main class="main">
-    <div class="section breadcrumbs-section">
-      <div class="wrapper flex">
-        <RouterLink to="/" class="text text-14 text-white">{{ $t('Home') }}</RouterLink>
-        <div class="text text-14 text-white">/</div>
-        <div class="text text-14 text-pink">{{ $t('Wish list') }}</div>
+  <main class="wishlist-page">
+    <div class="wishlist-page__container _cnt-home">
+      <Breadcrumbs :items="breadcrumbs" class="wishlist-page__breadcrumbs" />
+
+      <div class="wishlist-page__heading">
+        <h1 class="wishlist-page__title">
+          {{ $t('My wishlist') }}
+        </h1>
       </div>
-    </div>
-    <div class="section categories-section">
-      <div class="wrapper">
-        <div class="text text-24 text-center text-russo uppercase">{{ $t('Wish list') }}</div>
-        <div
-          class="list product-list flex flex-wrap"
-          v-if="wishListStore.items && wishListStore.items.length"
-        >
-          <div class="item" v-for="(item, i) in wishListStore.items" :key="i">
-            <ProductItem :item="item" />
-            <button class="star favorites-btn" @click="addToFavorites(item.id)">
-              <svg
-                width="43"
-                height="43"
-                viewBox="0 0 43 43"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M21.5 0.5C33.098 0.5 42.5 9.90202 42.5 21.5C42.5 33.098 33.098 42.5 21.5 42.5C9.90202 42.5 0.5 33.098 0.5 21.5C0.5 9.90202 9.90202 0.5 21.5 0.5Z"
-                  fill="url(#paint0_linear_51_1013)"
-                  stroke="url(#paint1_linear_51_1013)"
-                />
-                <g clip-path="url(#clip0_51_1013)">
-                  <path
-                    d="M26.7708 11.8372C25.6917 11.8539 24.6361 12.1552 23.7106 12.7105C22.7852 13.2657 22.0226 14.0554 21.5 14.9997C20.9774 14.0554 20.2148 13.2657 19.2894 12.7105C18.3639 12.1552 17.3083 11.8539 16.2292 11.8372C14.5089 11.9119 12.8881 12.6644 11.721 13.9304C10.5538 15.1963 9.93507 16.8727 10 18.5934C10 22.951 14.5866 27.71 18.4333 30.9367C19.2922 31.6585 20.3781 32.0542 21.5 32.0542C22.6219 32.0542 23.7078 31.6585 24.5667 30.9367C28.4134 27.71 33 22.951 33 18.5934C33.0649 16.8727 32.4462 15.1963 31.279 13.9304C30.1119 12.6644 28.4911 11.9119 26.7708 11.8372Z"
-                    fill="#F4EFFF"
-                  />
-                </g>
-                <defs>
-                  <linearGradient
-                    id="paint0_linear_51_1013"
-                    x1="21.5"
-                    y1="0"
-                    x2="21.5"
-                    y2="43"
-                    gradientUnits="userSpaceOnUse"
-                  >
-                    <stop stop-color="#FF0582" />
-                    <stop offset="1" stop-color="#9500FF" />
-                  </linearGradient>
-                  <linearGradient
-                    id="paint1_linear_51_1013"
-                    x1="21.5"
-                    y1="0"
-                    x2="21.5"
-                    y2="43"
-                    gradientUnits="userSpaceOnUse"
-                  >
-                    <stop stop-color="#FF0582" />
-                    <stop offset="1" stop-color="#9500FF" />
-                  </linearGradient>
-                  <clipPath id="clip0_51_1013">
-                    <rect width="23" height="23" fill="white" transform="translate(10 10)" />
-                  </clipPath>
-                </defs>
-              </svg>
-            </button>
+
+      <template v-if="products.length">
+        <div class="wishlist-page__toolbar">
+          <div class="wishlist-page__summary">
+            {{ productsCount }}
+            {{ $t(productsCount === 1 ? 'title' : 'titles') }}
+
+            <template v-if="priceDroppedCount">
+              <span>·</span>
+
+              {{ priceDroppedCount }}
+              {{ $t('dropped in price') }}
+            </template>
+          </div>
+
+          <div class="wishlist-page__actions">
+            <BaseButton
+              variant="bordered"
+              class="wishlist-page__clear"
+              :disabled="isClearing"
+              @click="clearWishlist"
+            >
+              {{ $t('Clear wishlist') }}
+            </BaseButton>
           </div>
         </div>
+
+        <div class="wishlist-page__items">
+          <WishlistProductItem
+            v-for="item in products"
+            :key="item.id"
+            :item="item"
+            class="wishlist-page__item"
+          />
+        </div>
+      </template>
+
+      <div v-else class="wishlist-page__empty">
+        <div class="wishlist-page__empty-box">
+          <SvgIcon :icon="FavoriteFilledIcon" class="wishlist-page__empty-icon" />
+        </div>
+
+        <h2 class="wishlist-page__empty-title">
+          {{ $t('Your wishlist is empty') }}
+        </h2>
+
+        <p class="wishlist-page__empty-text">
+          {{ $t('Save games you like and find them here whenever you are ready to buy.') }}
+        </p>
+
+        <BaseButton class="wishlist-page__browse" @click="browseCatalog">
+          {{ $t('Browse catalog') }}
+        </BaseButton>
       </div>
     </div>
   </main>
 </template>
+
+<style scoped lang="scss">
+@use '@/assets/styles/mixins' as *;
+@use '@/assets/styles/media' as *;
+@use '@/assets/styles/classes' as *;
+
+.wishlist-page {
+  width: 100%;
+  min-width: 0;
+  @include header-indent;
+  @include adaptiveValue('padding-top', 36, 20);
+  @include adaptiveValue('padding-bottom', 104, 50);
+
+  &__container {
+    min-width: 0;
+  }
+
+  &__breadcrumbs {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 34, 24);
+    }
+  }
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 32, 20);
+    }
+  }
+
+  &__title {
+    margin: 0;
+
+    color: var(--primary-color);
+
+    font-family: var(--font-gabarito);
+
+    @include adaptiveValue('font-size', 42, 30);
+
+    line-height: 1.1;
+    font-weight: 700;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+
+    gap: 20px;
+
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 28, 18);
+    }
+  }
+
+  &__summary {
+    min-width: 0;
+
+    color: var(--seconday-color);
+
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 700;
+
+    letter-spacing: 1.82px;
+
+    text-transform: uppercase;
+
+    span {
+      margin: 0 4px;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    margin-left: auto;
+  }
+
+  &__clear {
+    min-width: 0;
+    width: fit-content;
+  }
+
+  &__items {
+    display: grid;
+
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 20, 14);
+
+    min-width: 0;
+
+    @media (max-width: $md1) {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md2) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md3) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md4) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (max-width: $md5) {
+      display: flex;
+      flex-direction: column;
+
+      gap: 12px;
+    }
+  }
+
+  &__item {
+    min-width: 0;
+  }
+
+  &__empty {
+    width: 100%;
+    max-width: 560px;
+
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+
+    margin: 0 auto;
+
+    @include adaptiveValue('padding-top', 70, 35);
+    @include adaptiveValue('padding-bottom', 70, 35);
+    @include adaptiveValue('padding-left', 40, 20);
+    @include adaptiveValue('padding-right', 40, 20);
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
+    background-color: var(--bg-secondary-color);
+
+    text-align: center;
+
+    &-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      @include adaptiveValue('min-width', 64, 48);
+      @include adaptiveValue('min-height', 64, 48);
+      &:not(:last-child) {
+        @include adaptiveValue('margin-bottom', 22, 18);
+      }
+      border: 2px solid var(--hint-primary-color);
+      border-radius: 14px;
+
+      color: var(--hint-primary-color);
+    }
+
+    &-icon {
+      @include adaptiveValue('min-width', 27, 18);
+      @include adaptiveValue('height', 27, 18);
+    }
+
+    &-title {
+      margin: 0 0 10px;
+
+      color: var(--primary-color);
+
+      font-family: var(--font-gabarito);
+
+      @include adaptiveValue('font-size', 26, 22);
+
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    &-text {
+      max-width: 430px;
+
+      margin: 0 0 24px;
+
+      color: var(--seconday-color);
+
+      font-size: 14px;
+      line-height: 22px;
+    }
+  }
+
+  &__browse {
+    width: fit-content;
+
+    min-width: 160px;
+  }
+
+  @media (max-width: $md5) {
+    &__toolbar {
+      align-items: flex-start;
+      flex-direction: column;
+
+      gap: 12px;
+    }
+
+    &__summary {
+      font-size: 11px;
+      line-height: 16px;
+
+      letter-spacing: 1.54px;
+    }
+
+    &__actions {
+      width: 100%;
+
+      margin-left: 0;
+    }
+
+    &__clear {
+      width: 100%;
+    }
+  }
+}
+</style>
