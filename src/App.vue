@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -22,7 +22,8 @@ import { useTopUpModalStore } from '@/stores/topUpModal'
 import CookiesModal from './components/CookiesModal.vue'
 import FooterView from './components/layout/FooterView.vue'
 import HeaderView from './components/layout/HeaderView.vue'
-import LoginModal from './components/LoginModal.vue'
+
+import Loader from './components/Loader.vue'
 import RecoverModal from './components/RecoverModal.vue'
 import RegModal from './components/RegModal.vue'
 import TopUpModal from './components/TopUpModal.vue'
@@ -46,6 +47,8 @@ const cartStore = useCartStore()
 const profileStore = useProfileStore()
 const cookiesModalStore = useCookiesModalStore()
 
+const appLoading = ref(true)
+
 watch(
   () => router.currentRoute.value.fullPath,
   () => {
@@ -68,28 +71,38 @@ watch(
       return
     }
 
-    await Promise.all([cartStore.getCart(), profileStore.getProfile()])
+    try {
+      await Promise.all([cartStore.getCart(), profileStore.getProfile()])
+    } catch (error) {
+      console.error('Unable to load user data:', error)
+    }
   },
   {
     immediate: true,
   },
 )
 
-onMounted(() => {
+onMounted(async () => {
   const cookiesAccepted = localStorage.getItem('cookiesAccepted')
 
   if (!cookiesAccepted) {
     cookiesModalStore.openModal()
   }
 
-  globalStore.fetchLanguages()
-  authStore.checkAuth()
-  socialsStore.getSocials()
-  currStore.getCurrencies()
-  settingsStore.getSettings()
-  staticStore.getStatic()
-  countriesStore.getCountries()
-  categoriesStore.getCategories()
+  try {
+    await Promise.allSettled([
+      globalStore.fetchLanguages(),
+      authStore.checkAuth(),
+      socialsStore.getSocials(),
+      currStore.getCurrencies(),
+      settingsStore.getSettings(),
+      staticStore.getStatic(),
+      countriesStore.getCountries(),
+      categoriesStore.getCategories(),
+    ])
+  } finally {
+    appLoading.value = false
+  }
 })
 </script>
 
@@ -98,7 +111,11 @@ onMounted(() => {
     <HeaderView />
 
     <div class="page__content">
-      <RouterView />
+      <div v-if="appLoading" class="page__loader">
+        <Loader />
+      </div>
+
+      <RouterView v-else />
     </div>
 
     <FooterView />
@@ -128,13 +145,22 @@ onMounted(() => {
 <style scoped lang="scss">
 .page {
   display: flex;
-  flex-direction: column;
   flex: 1 1 100%;
+  flex-direction: column;
+
+  min-height: 100vh;
 
   &__content {
     display: flex;
-    flex-direction: column;
     flex: 1 1 100%;
+    flex-direction: column;
+  }
+
+  &__loader {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>
