@@ -8,6 +8,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import CartView from '@/views/CartPage/CartView.vue'
 import GameView from '@/views/GamePage/GameView.vue'
 import GiftCardView from '@/views/GiftPage/GiftCardView.vue'
+import WishListView from '@/views/WishListPage/WishListView.vue'
 import ContactView from '../views/ContactView.vue'
 import FailPayment from '../views/FailPayment.vue'
 import FaqView from '../views/FaqView.vue'
@@ -16,7 +17,6 @@ import PayView from '../views/PayView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import StaticPageView from '../views/StaticPageView.vue'
 import SuccessPayment from '../views/SuccessPayment.vue'
-import WishListView from '../views/WishListView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

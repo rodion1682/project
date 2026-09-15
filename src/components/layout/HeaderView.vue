@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
   right: 0;
   left: 0;
 
-  max-width: 100vw;
+  max-width: 100%;
   min-width: 320px;
   width: 100%;
 
@@ -508,6 +508,7 @@ onBeforeUnmount(() => {
     @media (min-width: $md5) {
       min-width: 127px;
       width: fit-content;
+      margin-right: auto;
     }
 
     &_mobile {
@@ -516,11 +517,10 @@ onBeforeUnmount(() => {
   }
 
   &__input {
-    flex: 1 1 auto;
-    min-width: 0;
-
     @media (min-width: $md3) {
+      flex: 1 1 auto;
       max-width: 561px;
+      min-width: 0;
 
       margin-right: auto;
     }
