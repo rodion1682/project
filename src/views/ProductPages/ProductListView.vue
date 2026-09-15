@@ -1,10 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import Loader from '@/components/Loader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
@@ -12,6 +12,9 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { useProductsStore } from '@/stores/products'
+
+import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+import { EmptyIcon } from '@/components/ui/icons/index.js'
 import ProductListItem from './components/ProductListItem.vue'
 
 const props = defineProps({
@@ -42,7 +45,6 @@ const activePrice = ref('')
 const selectedCategory = ref(props.category)
 
 const search = ref(String(route.query.search || ''))
-
 const debouncedSearch = ref(search.value)
 
 const itemsPerPage = ref(10)
@@ -179,6 +181,10 @@ const productSort = computed(() => {
 })
 
 const filteredProducts = computed(() => {
+  if (!Array.isArray(productsStore.products)) {
+    return []
+  }
+
   return productsStore.products.map((item) => ({
     ...item,
     title: item.title?.replaceAll('&#039;', '') || '',
@@ -199,6 +205,12 @@ const canFetchProducts = computed(() => {
   }
 
   return true
+})
+
+const hasActiveFilters = computed(() => {
+  return Boolean(
+    activeSort.value || activePrice.value || debouncedSearch.value || props.category !== 'all',
+  )
 })
 
 const fetchProducts = () => {
@@ -230,6 +242,29 @@ const goToCategory = (value) => {
           search: route.query.search,
         }
       : {},
+  })
+}
+
+const resetFilters = async () => {
+  clearTimeout(searchTimeout)
+
+  activeSort.value = ''
+  activePrice.value = ''
+  search.value = ''
+  debouncedSearch.value = ''
+  selectedCategory.value = 'all'
+  currentPage.value = 1
+
+  const path = `/products/${props.platform}/all`
+
+  if (route.path === path && !Object.keys(route.query).length) {
+    fetchProducts()
+    return
+  }
+
+  await router.push({
+    path,
+    query: {},
   })
 }
 
@@ -356,7 +391,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <Loader v-if="productsStore.loader" class="products-list-page__loader" />
+      <div v-if="productsStore.loader" class="products-list-page__loader">
+        <Loader />
+      </div>
 
       <div v-else-if="filteredProducts.length" class="products-list-page__products">
         <ProductListItem
@@ -368,11 +405,30 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-else class="products-list-page__empty">
-        {{ $t('No products found') }}
+        <div class="products-list-page__empty-box">
+          <SvgIcon :icon="EmptyIcon" class="products-list-page__empty-icon" />
+        </div>
+
+        <h2 class="products-list-page__empty-title">
+          {{ $t('No products found') }}
+        </h2>
+
+        <p class="products-list-page__empty-text">
+          {{ $t('Try changing your filters or search to find what you are looking for.') }}
+        </p>
+
+        <BaseButton class="products-list-page__reset" @click="resetFilters">
+          {{ $t('Reset filters') }}
+        </BaseButton>
       </div>
 
       <BasePagination
-        v-if="productsStore.meta?.total && itemsPerPage"
+        v-if="
+          !productsStore.loader &&
+          filteredProducts.length &&
+          productsStore.meta?.total &&
+          itemsPerPage
+        "
         v-model="currentPage"
         class="products-list-page__pagination"
         :total-items="productsStore.meta.total"
@@ -390,21 +446,24 @@ onBeforeUnmount(() => {
 @use '@/assets/styles/classes' as *;
 
 .products-list-page {
+  width: 100%;
+  min-width: 0;
+
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+
   @include header-indent;
   @include adaptiveValue('padding-top', 22, 14);
   @include adaptiveValue('padding-bottom', 100, 35);
 
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 100%;
-
   &__container {
     width: 100%;
+    min-width: 0;
 
     display: flex;
-    flex-direction: column;
-
     flex: 1 1 100%;
+    flex-direction: column;
   }
 
   &__breadcrumbs {
@@ -414,19 +473,23 @@ onBeforeUnmount(() => {
   }
 
   &__heading {
+    min-width: 0;
+
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 24, 18);
     }
   }
 
   &__title {
+    min-width: 0;
+
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
 
-    gap: 8px;
-
     text-transform: none;
+
+    @include adaptiveValue('gap', 8, 5);
   }
 
   &__platform {
@@ -438,11 +501,14 @@ onBeforeUnmount(() => {
   }
 
   &__toolbar {
+    width: 100%;
+    min-width: 0;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
+    @include adaptiveValue('gap', 20, 12);
 
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 30, 12);
@@ -457,14 +523,27 @@ onBeforeUnmount(() => {
   }
 
   &__filters {
-    display: flex;
-    @include adaptiveValue('gap', 14, 8);
-
     width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-wrap: wrap;
+
+    @include adaptiveValue('gap', 14, 8);
   }
 
   &__select {
     width: fit-content;
+    min-width: 0;
+
+    @media (max-width: $md5) {
+      flex: 1 1 calc(50% - 4px);
+    }
+
+    @media (max-width: $md8) {
+      width: 100%;
+      flex: 1 1 100%;
+    }
   }
 
   &__total {
@@ -472,14 +551,18 @@ onBeforeUnmount(() => {
 
     color: var(--seconday-color);
 
+    font-weight: 400;
+    text-transform: uppercase;
+
     @include adaptiveValue('font-size', 13, 11);
     @include adaptiveValue('line-height', 18, 15);
-    font-weight: 400;
     @include adaptiveValue('letter-spacing', 1.82, 1.54);
-    text-transform: uppercase;
   }
 
   &__products {
+    width: 100%;
+    min-width: 0;
+
     display: grid;
 
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -497,33 +580,104 @@ onBeforeUnmount(() => {
     @media (max-width: 619.98px) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
-    @media (max-width: 439.98px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 
   &__product {
+    width: 100%;
     min-width: 0;
   }
 
   &__loader {
+    width: 100%;
+
     display: flex;
+    align-items: center;
     justify-content: center;
+
+    @include adaptiveValue('min-height', 420, 260);
   }
 
   &__empty {
-    padding: 30px;
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+
+    margin-left: auto;
+    margin-right: auto;
 
     border: 2px solid var(--border-primary-color);
-
     border-radius: 14px;
 
     background-color: var(--bg-secondary-color);
 
-    color: var(--seconday-color);
-
     text-align: center;
+
+    @include adaptiveValue('max-width', 560, 340);
+    @include adaptiveValue('padding-top', 70, 35);
+    @include adaptiveValue('padding-bottom', 70, 35);
+    @include adaptiveValue('padding-left', 40, 18);
+    @include adaptiveValue('padding-right', 40, 18);
+
+    &-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      flex: 0 0 auto;
+
+      border: 2px solid var(--hint-primary-color);
+      border-radius: 14px;
+
+      color: var(--hint-primary-color);
+
+      @include adaptiveValue('width', 64, 48);
+      @include adaptiveValue('height', 64, 48);
+
+      &:not(:last-child) {
+        @include adaptiveValue('margin-bottom', 22, 18);
+      }
+    }
+
+    &-icon {
+      flex: 0 0 auto;
+
+      @include adaptiveValue('width', 27, 20);
+      @include adaptiveValue('height', 27, 20);
+    }
+
+    &-title {
+      margin-top: 0;
+
+      color: var(--primary-color);
+
+      font-family: var(--font-gabarito);
+      font-weight: 700;
+      line-height: 1.2;
+
+      @include adaptiveValue('font-size', 26, 22);
+      @include adaptiveValue('margin-bottom', 10, 8);
+    }
+
+    &-text {
+      width: 100%;
+
+      margin-top: 0;
+
+      color: var(--seconday-color);
+
+      @include adaptiveValue('max-width', 430, 300);
+      @include adaptiveValue('font-size', 14, 13);
+      @include adaptiveValue('line-height', 22, 20);
+      @include adaptiveValue('margin-bottom', 24, 18);
+    }
+  }
+
+  &__reset {
+    width: fit-content;
+
+    @include adaptiveValue('min-width', 160, 145);
   }
 
   &__pagination {

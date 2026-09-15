@@ -35,3 +35,18 @@ export const ArrowIcon = `
 <path d="M3.828 6.778H16V8.778H3.828L9.192 14.142L7.778 15.556L0 7.778L7.778 0L9.192 1.414L3.828 6.778Z" fill="currentColor"/>
 </svg>
 `
+
+export const EmptyIcon = `
+ <svg
+
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2" />
+
+            <path d="M16 16L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+
+            <path d="M8.5 11H13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+`
