@@ -53,3 +53,9 @@ function acceptCookies() {
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.cookies-modal {
+  display: none !important;
+}
+</style>
