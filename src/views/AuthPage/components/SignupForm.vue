@@ -6,6 +6,7 @@ import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 
 import { useRegStore } from '@/stores/reg'
+import { useRouter } from 'vue-router'
 
 defineProps({
   disabled: {
@@ -15,6 +16,8 @@ defineProps({
 })
 
 const emit = defineEmits(['login', 'submitted'])
+
+const router = useRouter()
 
 const regStore = useRegStore()
 
@@ -60,6 +63,8 @@ const submit = async () => {
 
     if (!regStore.error) {
       emit('submitted')
+      
+      await router.push('/profile/overview')
     }
   } finally {
     isSubmitting.value = false

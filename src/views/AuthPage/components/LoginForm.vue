@@ -5,6 +5,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 
 import { useLoginStore } from '@/stores/login'
+import { useRouter } from 'vue-router'
 
 defineProps({
   disabled: {
@@ -14,6 +15,8 @@ defineProps({
 })
 
 const emit = defineEmits(['forgot', 'signup', 'submitted'])
+
+const router = useRouter()
 
 const loginStore = useLoginStore()
 
@@ -44,6 +47,7 @@ const submit = async () => {
 
     if (!loginStore.error) {
       emit('submitted')
+      await router.push('/profile/overview')
     }
   } finally {
     isSubmitting.value = false
