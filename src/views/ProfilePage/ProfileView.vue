@@ -1,10 +1,10 @@
 <script setup>
-import OverviewView from '../components/profile/OverviewView.vue'
-import OrdersView from '../components/profile/OrdersView.vue'
-import ProfileData from '../components/profile/ProfileData.vue'
-import ChangePasswordView from '../components/profile/ChangePasswordView.vue'
-import BalanceView from '../components/profile/BalanceView.vue'
-import OrderView from '../components/profile/OrderView.vue'
+
+import OrdersView from './components/OrdersView.vue'
+import ProfileData from './components/ProfileData.vue'
+import ChangePasswordView from './components/ChangePasswordView.vue'
+import BalanceView from './components/BalanceView.vue'
+import OrderView from './components/OrderView.vue'
 import { useLogoutStore } from '@/stores/logout'
 import { useProfileStore } from '@/stores/profile'
 
@@ -12,6 +12,7 @@ const logoutStore = useLogoutStore()
 const profileStore = useProfileStore()
 
 import { toRefs } from 'vue'
+import OverviewView from './components/OverviewView.vue'
 
 const props = defineProps({
   page: {

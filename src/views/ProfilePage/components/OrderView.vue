@@ -1,13 +1,13 @@
 <script setup>
-import { onMounted, watchEffect, toRefs, ref } from 'vue'
-import { useProfileStore } from '@/stores/profile'
-import { useCurrStore } from '@/stores/currencies'
+import ProductItem from '@/components/ProductItem.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useCurrStore } from '@/stores/currencies'
+import { useProfileStore } from '@/stores/profile'
+import { onMounted, ref, toRefs, watchEffect } from 'vue'
 
 const profileStore = useProfileStore()
 const currStore = useCurrStore()
 const authStore = useAuthStore()
-import ProductItem from '../../components/ProductItem.vue'
 
 const props = defineProps({
   order: {

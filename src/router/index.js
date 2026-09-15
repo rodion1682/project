@@ -11,12 +11,12 @@ import GameView from '@/views/GamePage/GameView.vue'
 import GiftCardView from '@/views/GiftPage/GiftCardView.vue'
 import WishListView from '@/views/WishListPage/WishListView.vue'
 
+import ProfileView from '@/views/ProfilePage/ProfileView.vue'
 import ContactView from '../views/ContactView.vue'
 import FailPayment from '../views/FailPayment.vue'
 import FaqView from '../views/FaqView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import PayView from '../views/PayView.vue'
-import ProfileView from '../views/ProfileView.vue'
 import StaticPageView from '../views/StaticPageView.vue'
 import SuccessPayment from '../views/SuccessPayment.vue'
 

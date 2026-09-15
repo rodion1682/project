@@ -21,7 +21,6 @@ import BaseButton from '../ui/BaseButton.vue'
 import BaseInput from '../ui/BaseInput.vue'
 
 import { CartIcon, FavoriteIcon, SearchIcon } from '../ui/icons/index.js'
-
 import SvgIcon from '../ui/icons/SvgIcon.vue'
 
 const IS_LOGIN_MODAL_ACTIVE = false
@@ -69,39 +68,72 @@ const updateHeaderHeight = () => {
   document.documentElement.style.setProperty('--header-height', `${headerRef.value.offsetHeight}px`)
 }
 
+const getScrollbarWidth = () => {
+  return Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+}
+
+const lockPageScroll = () => {
+  const scrollbarWidth = getScrollbarWidth()
+
+  document.documentElement.style.setProperty('--header-scrollbar-width', `${scrollbarWidth}px`)
+
+  document.documentElement.classList.add('header-scroll-lock')
+  document.body.classList.add('header-scroll-lock')
+}
+
+const unlockPageScroll = () => {
+  document.documentElement.classList.remove('header-scroll-lock')
+  document.body.classList.remove('header-scroll-lock')
+
+  document.documentElement.style.removeProperty('--header-scrollbar-width')
+}
+
+const updatePageScroll = () => {
+  const shouldLock = isMobileNavMenuVisible.value || menuStore.isMenuOpen
+
+  if (shouldLock) {
+    lockPageScroll()
+    return
+  }
+
+  unlockPageScroll()
+}
+
 const closeMobileMenu = () => {
   isMobileNavMenuVisible.value = false
 }
 
-const closeHeaderMenus = () => {
-  closeMobileMenu()
-
+const closeProductsMenu = () => {
   if (menuStore.isMenuOpen) {
-    menuStore.toggleMenu()
+    menuStore.closeMenu()
   }
 }
 
+const closeHeaderMenus = () => {
+  closeMobileMenu()
+  closeProductsMenu()
+}
+
 const goToProfile = () => {
+  closeHeaderMenus()
+
   router.push({
     name: 'profile',
     params: {
       page: 'overview',
     },
   })
-
-  closeMobileMenu()
 }
 
 const goToWishlist = () => {
+  closeHeaderMenus()
   router.push('/wish-list')
-  closeMobileMenu()
 }
 
 const goToCart = () => {
+  closeHeaderMenus()
   router.push('/cart')
-  closeMobileMenu()
 }
-
 
 const openLogin = () => {
   closeHeaderMenus()
@@ -136,15 +168,25 @@ const openRegistration = () => {
 }
 
 const toggleMobileMenu = () => {
-  isMobileNavMenuVisible.value = !isMobileNavMenuVisible.value
+  if (isMobileNavMenuVisible.value) {
+    closeMobileMenu()
+    return
+  }
+
+  closeProductsMenu()
+
+  isMobileNavMenuVisible.value = true
 }
 
 const toggleProducts = () => {
-  menuStore.toggleMenu()
-
-  if (isMobile.value) {
-    closeMobileMenu()
+  if (menuStore.isMenuOpen) {
+    closeProductsMenu()
+    return
   }
+
+  closeMobileMenu()
+
+  menuStore.toggleMenu()
 }
 
 const sanitizeSearch = (value) => {
@@ -210,9 +252,15 @@ watch(
   },
 )
 
-watch(isMobileNavMenuVisible, (isOpen) => {
-  document.body.style.overflow = isOpen ? 'hidden' : ''
-})
+watch(
+  [isMobileNavMenuVisible, () => menuStore.isMenuOpen],
+  () => {
+    updatePageScroll()
+  },
+  {
+    immediate: true,
+  },
+)
 
 watch(isTablet, (value) => {
   if (!value) {
@@ -223,7 +271,7 @@ watch(isTablet, (value) => {
 watch(
   () => router.currentRoute.value.fullPath,
   () => {
-    closeMobileMenu()
+    closeHeaderMenus()
   },
 )
 
@@ -240,6 +288,7 @@ onMounted(() => {
 
   updateBreakpoints()
   updateHeaderHeight()
+  updatePageScroll()
 
   headerResizeObserver = new ResizeObserver(() => {
     updateHeaderHeight()
@@ -253,7 +302,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(searchTimeout)
 
-  document.body.style.overflow = ''
+  unlockPageScroll()
 
   tabletMedia?.removeEventListener('change', updateBreakpoints)
   smallTabletMedia?.removeEventListener('change', updateBreakpoints)
@@ -268,18 +317,18 @@ onBeforeUnmount(() => {
   document.documentElement.style.removeProperty('--header-height')
 })
 </script>
+
 <template>
   <header
     ref="headerRef"
-    :class="[
-      'header',
-      {
-        active: menuStore.isMenuOpen,
-      },
-    ]"
+    class="header"
+    :class="{
+      active: menuStore.isMenuOpen,
+      'nav-open': isMobileNavMenuVisible,
+    }"
   >
     <div class="header__inner _cnt">
-      <RouterLink to="/" class="header__logo _ibg-contain" @click="closeMobileMenu">
+      <RouterLink to="/" class="header__logo _ibg-contain" @click="closeHeaderMenus">
         <img class="header__logo_desk" src="@/assets/img/logo.svg" alt="" />
       </RouterLink>
 
@@ -310,14 +359,23 @@ onBeforeUnmount(() => {
       <CurrencySelector v-if="!isSmallTablet" class="header__select header__select_cur" />
 
       <div v-if="authStore.isAuth" class="header__auth auth">
-        <RouterLink to="/profile/balance" class="auth__link auth__link_balance">
+        <RouterLink
+          to="/profile/balance"
+          class="auth__link auth__link_balance"
+          @click="closeHeaderMenus"
+        >
           <div class="auth__link-price">
             {{ profileStore.profile.balanceInCurrency }}
-            {{ currStore.currency.symbol }}
+            {{ currStore.currency?.symbol }}
           </div>
         </RouterLink>
 
-        <RouterLink v-if="!isSmallMobile" to="/wish-list" class="auth__link auth__link_favorite">
+        <RouterLink
+          v-if="!isSmallMobile"
+          to="/wish-list"
+          class="auth__link auth__link_favorite"
+          @click="closeHeaderMenus"
+        >
           <SvgIcon :icon="FavoriteIcon" class="auth__link-icon" />
 
           <div
@@ -328,13 +386,10 @@ onBeforeUnmount(() => {
           </div>
         </RouterLink>
 
-        <RouterLink to="/cart" class="auth__link">
+        <RouterLink to="/cart" class="auth__link" @click="closeHeaderMenus">
           <SvgIcon :icon="CartIcon" class="auth__link-icon" />
 
-          <div
-            v-if="cartStore.cart && cartStore.cart.products && cartStore.cart.products.length"
-            class="auth__link-indicator"
-          >
+          <div v-if="cartStore.cart?.products?.length" class="auth__link-indicator">
             {{ cartStore.cart.products.length }}
           </div>
         </RouterLink>
@@ -450,6 +505,7 @@ onBeforeUnmount(() => {
         :class="{
           open: isMobileNavMenuVisible,
         }"
+        :aria-label="$t(isMobileNavMenuVisible ? 'Close menu' : 'Open menu')"
         @click="toggleMobileMenu"
       >
         <span></span>
@@ -474,9 +530,9 @@ onBeforeUnmount(() => {
   right: 0;
   left: 0;
 
+  width: 100%;
   max-width: 100%;
   min-width: 320px;
-  width: 100%;
 
   z-index: var(--header-z-index);
 
@@ -484,11 +540,15 @@ onBeforeUnmount(() => {
 
   border-bottom: 3px solid var(--hint-primary-color);
 
-  transition: all 0.3s ease 0s;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 
   &__inner {
     display: flex;
     align-items: center;
+
+    min-width: 0;
 
     @include adaptiveValue('gap', 20, 10);
     @include adaptiveValue('min-height', 98, 79);
@@ -498,6 +558,8 @@ onBeforeUnmount(() => {
     display: block;
 
     width: fit-content;
+
+    flex: 0 0 auto;
 
     @include adaptiveValue('min-width', 145, 116);
     @include adaptiveValue('height', 29, 23);
@@ -516,10 +578,11 @@ onBeforeUnmount(() => {
   &__more,
   &__input,
   &__auth,
-  &__select {
+  &__select,
+  &__icon-menu {
     position: relative;
 
-    z-index: var(--header-z-index);
+    z-index: calc(var(--header-z-index) + 1);
 
     align-self: center;
   }
@@ -530,19 +593,24 @@ onBeforeUnmount(() => {
     @media (min-width: $md5) {
       min-width: 127px;
       width: fit-content;
+
       margin-right: auto;
     }
 
     &_mobile {
       width: 100%;
+
+      margin-right: 0;
     }
   }
 
   &__input {
+    min-width: 0;
+
     @media (min-width: $md3) {
       flex: 1 1 auto;
+
       max-width: 561px;
-      min-width: 0;
 
       margin-right: auto;
     }
@@ -550,6 +618,7 @@ onBeforeUnmount(() => {
     &_mobile {
       width: 100%;
       max-width: none;
+
       margin-right: 0;
     }
 
@@ -600,7 +669,10 @@ onBeforeUnmount(() => {
 
     color: var(--border-dark-color);
 
-    transition: all 0.3s ease 0s;
+    transition:
+      color 0.3s ease,
+      border-color 0.3s ease,
+      background-color 0.3s ease;
 
     &_balance {
       @include adaptiveValue('min-width', 103, 68);
@@ -609,24 +681,22 @@ onBeforeUnmount(() => {
 
       color: var(--hint-primary-color);
 
+      font-family: var(--font-gabarito);
       font-size: 15px;
       font-weight: 900;
-      font-family: var(--font-gabarito);
     }
 
     &.router-link-active {
       color: var(--light-color);
 
       background-color: var(--hint-primary-color);
-
-      pointer-events: none;
     }
 
     @media (any-hover: hover) {
       &:hover {
         color: var(--hint-primary-color);
 
-        border-color: inherit;
+        border-color: var(--hint-primary-color);
       }
     }
 
@@ -649,6 +719,8 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: center;
+
+      padding: 0 4px;
 
       border-radius: 7px;
 
@@ -730,41 +802,16 @@ onBeforeUnmount(() => {
     overflow-x: hidden;
     overflow-y: auto;
 
+    overscroll-behavior-y: contain;
+
     -webkit-overflow-scrolling: touch;
 
     background-color: var(--bg-primary-color);
 
-    margin-left: 0;
-
-    transition: left 0.3s ease 0s;
-
-    &::before {
-      content: '';
-
-      position: fixed;
-
-      z-index: var(--header-overlay-z-index);
-
-      top: 0;
-      left: -100%;
-
-      width: 100%;
-
-      @include adaptiveValue('height', 98, 79);
-
-      border-bottom: 3px solid var(--hint-primary-color);
-
-      background-color: var(--bg-secondary-color);
-
-      transition: left 0.3s ease 0s;
-    }
+    transition: left 0.3s ease;
 
     &.open {
       left: 0;
-
-      &::before {
-        left: 0;
-      }
     }
   }
 
@@ -787,14 +834,16 @@ onBeforeUnmount(() => {
 
   &__action {
     width: 100%;
-    min-height: 45px;
 
     display: flex;
     align-items: center;
 
-    gap: 12px;
-
-    padding: 10px 16px;
+    @include adaptiveValue('gap', 12, 10);
+    @include adaptiveValue('min-height', 48, 45);
+    @include adaptiveValue('padding-top', 10, 8);
+    @include adaptiveValue('padding-right', 16, 12);
+    @include adaptiveValue('padding-bottom', 10, 8);
+    @include adaptiveValue('padding-left', 16, 12);
 
     border: 2px solid var(--border-primary-color);
     border-radius: 10px;
@@ -804,7 +853,9 @@ onBeforeUnmount(() => {
     color: var(--primary-color);
 
     font-family: inherit;
-    font-size: 14px;
+
+    @include adaptiveValue('font-size', 14, 13);
+
     font-weight: 600;
 
     text-align: left;
@@ -857,18 +908,23 @@ onBeforeUnmount(() => {
   }
 
   @media (max-width: $md3) {
-    align-self: center;
-
     position: relative;
 
+    align-self: center;
+
+    flex: 0 0 auto;
+
     min-width: 30px;
+    width: 30px;
     height: 30px;
 
-    cursor: pointer;
+    padding: 0;
 
-    z-index: 12;
+    border: 0;
 
     background-color: transparent;
+
+    cursor: pointer;
 
     outline: transparent;
 
@@ -886,7 +942,11 @@ onBeforeUnmount(() => {
 
       background-color: var(--primary-color);
 
-      transition: all 0.3s ease 0s;
+      transition:
+        top 0.3s ease,
+        bottom 0.3s ease,
+        width 0.3s ease,
+        transform 0.3s ease;
     }
 
     &::before {
@@ -919,5 +979,37 @@ onBeforeUnmount(() => {
       }
     }
   }
+}
+
+.v-enter-active,
+.v-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+
+  transform: translateY(-8px);
+}
+</style>
+
+<style lang="scss">
+html.header-scroll-lock,
+body.header-scroll-lock {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.header-scroll-lock {
+  padding-right: var(--header-scrollbar-width, 0px);
+
+  touch-action: none;
+}
+
+html.header-scroll-lock .header {
+  padding-right: var(--header-scrollbar-width, 0px);
 }
 </style>
