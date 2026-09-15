@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import { useCartStore } from '@/stores/cart'
 import { useCurrStore } from '@/stores/currencies'
@@ -8,6 +10,13 @@ import { useProfileStore } from '@/stores/profile'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
+import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+
+import { CartIcon } from '@/components/ui/icons/index.js'
+
+const { t } = useI18n()
+
+const router = useRouter()
 
 const cartStore = useCartStore()
 const currStore = useCurrStore()
@@ -18,11 +27,11 @@ const removingIds = ref([])
 
 const breadcrumbs = computed(() => [
   {
-    title: 'Home',
+    title: t('Home'),
     link: '/',
   },
   {
-    title: 'Cart',
+    title: t('Cart'),
   },
 ])
 
@@ -99,7 +108,7 @@ const removeProduct = async (id) => {
 }
 
 const clearCart = async () => {
-  if (!products.value.length) {
+  if (!products.value.length || removingIds.value.length) {
     return
   }
 
@@ -115,7 +124,7 @@ const clearCart = async () => {
 }
 
 const payFromBalance = async () => {
-  if (!products.value.length || isPaying.value) {
+  if (!products.value.length || isPaying.value || !hasEnoughBalance.value) {
     return
   }
 
@@ -126,6 +135,10 @@ const payFromBalance = async () => {
   } finally {
     isPaying.value = false
   }
+}
+
+const browseCatalog = () => {
+  router.push('/products')
 }
 </script>
 
@@ -139,17 +152,14 @@ const payFromBalance = async () => {
       </h1>
 
       <div v-if="products.length" class="cart-page__layout">
-        <!-- LEFT SIDE -->
         <div class="cart-page__products cart-products">
-          <!-- Desktop headings -->
           <div class="cart-products__head">
             <div class="cart-products__head-product">
               {{ $t('Product') }}
             </div>
 
             <div class="cart-products__head-platform">
-              {{ $t('Platform') }} ·
-              {{ $t('Region') }}
+              {{ $t('Platform') }} · {{ $t('Region') }}
             </div>
 
             <div class="cart-products__head-price">
@@ -159,7 +169,6 @@ const payFromBalance = async () => {
             <div></div>
           </div>
 
-          <!-- Products -->
           <div class="cart-products__list">
             <div v-for="product in products" :key="product.id" class="cart-product">
               <div class="cart-product__main">
@@ -176,7 +185,6 @@ const payFromBalance = async () => {
                     {{ $t(getProductGenre(product)) }}
                   </div>
 
-                  <!-- Mobile platform/region -->
                   <div v-if="getPlatformRegion(product)" class="cart-product__mobile-meta">
                     {{ $t(getProductPlatform(product)) }}
 
@@ -187,7 +195,6 @@ const payFromBalance = async () => {
                     {{ $t(getProductRegion(product)) }}
                   </div>
 
-                  <!-- Mobile price -->
                   <PriceFormatter
                     class="cart-product__mobile-price"
                     size="size-21-market"
@@ -242,9 +249,7 @@ const payFromBalance = async () => {
           </div>
         </div>
 
-        <!-- RIGHT SIDE -->
         <aside class="cart-page__aside">
-          <!-- Order summary -->
           <div class="summary-card">
             <div class="summary-card__label">
               {{ $t('Order summary') }}
@@ -263,21 +268,6 @@ const payFromBalance = async () => {
                   {{ currStore.currency.symbol }}
                 </strong>
               </div>
-
-              <!--
-                Your current cart response/store does not
-                expose a separate VAT amount.
-
-                If backend later sends cart.vat, enable this:
-
-                <div class="summary-card__row">
-                  <span>{{ $t('VAT included') }}</span>
-                  <strong>
-                    {{ formatPrice(cartStore.cart.vat) }}
-                    {{ currStore.currency.symbol }}
-                  </strong>
-                </div>
-              -->
             </div>
 
             <div class="summary-card__total">
@@ -292,7 +282,6 @@ const payFromBalance = async () => {
             </div>
           </div>
 
-          <!-- Balance -->
           <div class="balance-card">
             <div class="balance-card__row">
               <div class="balance-card__balance-label">
@@ -350,22 +339,23 @@ const payFromBalance = async () => {
         </aside>
       </div>
 
-      <!-- EMPTY CART -->
       <div v-else class="cart-page__empty">
-        <div class="cart-page__empty-title">
+        <div class="cart-page__empty-box">
+          <SvgIcon :icon="CartIcon" class="cart-page__empty-icon" />
+        </div>
+
+        <h2 class="cart-page__empty-title">
           {{ $t('Your cart is empty') }}
-        </div>
+        </h2>
 
-        <div class="cart-page__empty-text">
-          {{ $t('Add some games to your cart to continue.') }}
-        </div>
+        <p class="cart-page__empty-text">
+          {{
+            $t('Add games to your cart and they will appear here when you are ready to checkout.')
+          }}
+        </p>
 
-        <BaseButton
-          variant="secondary"
-          class="cart-page__empty-button"
-          @click="$router.push('/products/all/all')"
-        >
-          {{ $t('Continue shopping') }}
+        <BaseButton class="cart-page__empty-button" @click="browseCatalog">
+          {{ $t('Browse catalog') }}
         </BaseButton>
       </div>
     </div>
@@ -378,47 +368,54 @@ const payFromBalance = async () => {
 @use '@/assets/styles/classes' as *;
 
 .cart-page {
+  width: 100%;
+  min-width: 0;
+
   @include header-indent;
+  @include adaptiveValue('padding-top', 32, 18);
+  @include adaptiveValue('padding-bottom', 104, 32);
 
-  @include adaptiveValue('padding-top', 24, 14);
-
-  @include adaptiveValue('padding-bottom', 110, 40);
+  &__container {
+    width: 100%;
+    min-width: 0;
+  }
 
   &__breadcrumbs {
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 18, 12);
+      @include adaptiveValue('margin-bottom', 32, 20);
     }
   }
 
   &__title {
+    min-width: 0;
+
     margin: 0;
 
     color: var(--primary-color);
 
     font-family: var(--font-gabarito);
-    font-weight: 900;
+    font-weight: 700;
+    line-height: 1.1;
 
-    @include adaptiveValue('font-size', 36, 28);
-
-    @include adaptiveValue('line-height', 42, 32);
-
-    letter-spacing: -0.03em;
+    @include adaptiveValue('font-size', 42, 30);
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 46, 26);
+      @include adaptiveValue('margin-bottom', 32, 18);
     }
   }
 
   &__layout {
-    display: grid;
+    width: 100%;
+    min-width: 0;
 
+    display: grid;
     grid-template-columns:
       minmax(0, 1fr)
       minmax(330px, 420px);
 
-    @include adaptiveValue('gap', 55, 30);
-
     align-items: start;
+
+    @include adaptiveValue('gap', 55, 30);
 
     @media (max-width: $md3) {
       grid-template-columns: 1fr;
@@ -434,21 +431,19 @@ const payFromBalance = async () => {
   }
 
   &__aside {
+    width: 100%;
     min-width: 0;
 
     display: flex;
     flex-direction: column;
 
-    gap: 20px;
+    @include adaptiveValue('gap', 20, 14);
 
     @media (max-width: $md3) {
       max-width: 600px;
-      width: 100%;
-      margin: 0 auto;
-    }
 
-    @media (max-width: $md8) {
-      gap: 14px;
+      margin-left: auto;
+      margin-right: auto;
     }
   }
 
@@ -457,8 +452,8 @@ const payFromBalance = async () => {
 
     color: var(--seconday-color);
 
-    font-size: 12px;
-    line-height: 19px;
+    @include adaptiveValue('font-size', 12, 11);
+    @include adaptiveValue('line-height', 19, 17);
 
     @media (max-width: $md8) {
       display: none;
@@ -466,49 +461,98 @@ const payFromBalance = async () => {
   }
 
   &__empty {
-    padding: clamp(40px, 8vw, 100px) 20px;
+    width: 100%;
 
     display: flex;
-    flex-direction: column;
     align-items: center;
+    flex-direction: column;
+
+    margin-left: auto;
+    margin-right: auto;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
+    background-color: var(--bg-secondary-color);
 
     text-align: center;
-  }
 
-  &__empty-title {
-    color: var(--primary-color);
+    @include adaptiveValue('max-width', 560, 340);
+    @include adaptiveValue('padding-top', 70, 35);
+    @include adaptiveValue('padding-bottom', 70, 35);
+    @include adaptiveValue('padding-left', 40, 18);
+    @include adaptiveValue('padding-right', 40, 18);
 
-    font-family: var(--font-gabarito);
-    font-weight: 900;
+    &-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
-    @include adaptiveValue('font-size', 28, 22);
+      flex: 0 0 auto;
 
-    &:not(:last-child) {
-      margin-bottom: 10px;
+      border: 2px solid var(--hint-primary-color);
+      border-radius: 14px;
+
+      color: var(--hint-primary-color);
+
+      @include adaptiveValue('width', 64, 48);
+      @include adaptiveValue('height', 64, 48);
+
+      &:not(:last-child) {
+        @include adaptiveValue('margin-bottom', 22, 18);
+      }
     }
-  }
 
-  &__empty-text {
-    color: var(--seconday-color);
+    &-icon {
+      flex: 0 0 auto;
 
-    font-size: 14px;
-    line-height: 20px;
+      @include adaptiveValue('width', 27, 18);
+      @include adaptiveValue('height', 27, 18);
 
-    &:not(:last-child) {
-      margin-bottom: 24px;
+      color: inherit;
     }
-  }
 
-  &__empty-button {
-    min-width: 200px;
+    &-title {
+      margin-top: 0;
+
+      color: var(--primary-color);
+
+      font-family: var(--font-gabarito);
+      font-weight: 700;
+      line-height: 1.2;
+
+      @include adaptiveValue('font-size', 26, 22);
+      @include adaptiveValue('margin-bottom', 10, 8);
+    }
+
+    &-text {
+      width: 100%;
+
+      margin-top: 0;
+
+      color: var(--seconday-color);
+
+      @include adaptiveValue('max-width', 430, 300);
+      @include adaptiveValue('font-size', 14, 13);
+      @include adaptiveValue('line-height', 22, 20);
+      @include adaptiveValue('margin-bottom', 24, 18);
+    }
+
+    &-button {
+      width: fit-content;
+
+      @include adaptiveValue('min-width', 160, 145);
+    }
   }
 }
 
-/* ==============================
-   PRODUCTS
-============================== */
+/* =========================================
+   CART PRODUCTS
+========================================= */
 
 .cart-products {
+  min-width: 0;
+
   &__head {
     display: grid;
 
@@ -518,23 +562,24 @@ const payFromBalance = async () => {
       minmax(110px, 0.45fr)
       48px;
 
-    gap: 20px;
+    align-items: center;
 
-    padding: 0 0 17px;
+    @include adaptiveValue('gap', 20, 12);
+    @include adaptiveValue('padding-bottom', 17, 12);
 
     border-bottom: 2px solid var(--border-primary-color);
 
     color: var(--seconday-color);
 
-    font-size: 10px;
-    line-height: 14px;
     font-weight: 700;
-
-    letter-spacing: 1.8px;
     text-transform: uppercase;
 
+    @include adaptiveValue('font-size', 10, 9);
+    @include adaptiveValue('line-height', 14, 13);
+    @include adaptiveValue('letter-spacing', 1.8, 1.4);
+
     &-product {
-      padding-left: 135px;
+      @include adaptiveValue('padding-left', 135, 100);
     }
 
     &-price {
@@ -547,10 +592,6 @@ const payFromBalance = async () => {
         minmax(140px, 0.7fr)
         minmax(100px, 0.4fr)
         48px;
-
-      &-product {
-        padding-left: 110px;
-      }
     }
 
     @media (max-width: $md5) {
@@ -563,25 +604,21 @@ const payFromBalance = async () => {
   }
 
   &__bottom {
-    padding-top: 26px;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
-
-    @media (max-width: $md8) {
-      padding-top: 18px;
-    }
+    @include adaptiveValue('padding-top', 26, 18);
+    @include adaptiveValue('gap', 20, 10);
   }
 
   &__continue {
     color: var(--hint-primary-color);
 
-    font-size: 14px;
-    line-height: 20px;
     font-weight: 600;
+
+    @include adaptiveValue('font-size', 14, 12);
+    @include adaptiveValue('line-height', 20, 17);
 
     transition: opacity 0.3s ease;
 
@@ -590,32 +627,22 @@ const payFromBalance = async () => {
         opacity: 0.7;
       }
     }
-
-    @media (max-width: $md8) {
-      font-size: 12px;
-    }
   }
 
   &__clear {
-    min-width: 105px;
+    flex: 0 0 auto;
 
-    min-height: 42px;
-
-    color: var(--seconday-color);
-
-    @media (max-width: $md8) {
-      min-width: 90px;
-
-      padding: 8px 10px;
-
-      min-height: 38px;
-
-      font-size: 11px;
-    }
+    @include adaptiveValue('min-width', 105, 90);
+    @include adaptiveValue('min-height', 42, 38);
   }
 }
 
+/* =========================================
+   CART PRODUCT
+========================================= */
+
 .cart-product {
+  width: 100%;
   min-width: 0;
 
   display: grid;
@@ -628,10 +655,8 @@ const payFromBalance = async () => {
 
   align-items: center;
 
-  gap: 20px;
-
+  @include adaptiveValue('gap', 20, 12);
   @include adaptiveValue('padding-top', 24, 16);
-
   @include adaptiveValue('padding-bottom', 24, 16);
 
   &:not(:last-child) {
@@ -644,23 +669,21 @@ const payFromBalance = async () => {
     display: flex;
     align-items: center;
 
-    gap: 22px;
+    @include adaptiveValue('gap', 22, 10);
   }
 
   &__image {
     flex: 0 0 auto;
 
-    @include adaptiveValue('width', 112, 78);
-
-    @include adaptiveValue('height', 84, 58);
-
     overflow: hidden;
-
-    border-radius: 9px;
 
     border: 2px solid var(--border-primary-color);
 
-    background: var(--bg-secondary-color);
+    background-color: var(--bg-secondary-color);
+
+    @include adaptiveValue('width', 112, 70);
+    @include adaptiveValue('height', 84, 53);
+    @include adaptiveValue('border-radius', 9, 7);
   }
 
   &__content {
@@ -668,6 +691,8 @@ const payFromBalance = async () => {
   }
 
   &__title {
+    min-width: 0;
+
     overflow: hidden;
 
     color: var(--primary-color);
@@ -675,18 +700,17 @@ const payFromBalance = async () => {
     font-family: var(--font-gabarito);
     font-weight: 700;
 
-    @include adaptiveValue('font-size', 17, 14);
-
-    @include adaptiveValue('line-height', 22, 18);
-
     text-overflow: ellipsis;
 
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 
+    @include adaptiveValue('font-size', 17, 13);
+    @include adaptiveValue('line-height', 22, 17);
+
     &:not(:last-child) {
-      margin-bottom: 6px;
+      @include adaptiveValue('margin-bottom', 6, 2);
     }
   }
 
@@ -695,8 +719,8 @@ const payFromBalance = async () => {
   &__mobile-meta {
     color: var(--seconday-color);
 
-    font-size: 12px;
-    line-height: 17px;
+    @include adaptiveValue('font-size', 12, 10);
+    @include adaptiveValue('line-height', 17, 14);
   }
 
   &__platform {
@@ -705,8 +729,8 @@ const payFromBalance = async () => {
 
   &__price {
     display: flex;
-    flex-direction: column;
     align-items: flex-end;
+    flex-direction: column;
 
     gap: 3px;
 
@@ -714,16 +738,16 @@ const payFromBalance = async () => {
       font-family: var(--font-gabarito);
       font-weight: 700;
 
-      font-size: 17px;
-      line-height: 22px;
+      @include adaptiveValue('font-size', 17, 14);
+      @include adaptiveValue('line-height', 22, 18);
     }
   }
 
   &__vat {
     color: var(--seconday-color);
 
-    font-size: 10px;
-    line-height: 14px;
+    @include adaptiveValue('font-size', 10, 9);
+    @include adaptiveValue('line-height', 14, 12);
   }
 
   &__mobile-meta,
@@ -732,22 +756,23 @@ const payFromBalance = async () => {
   }
 
   &__remove {
-    justify-self: end;
-
     position: relative;
 
-    width: 42px;
-    height: 42px;
+    justify-self: end;
+
+    flex: 0 0 auto;
 
     border: 2px solid var(--border-primary-color);
-
-    border-radius: 9px;
 
     background-color: transparent;
 
     color: var(--seconday-color);
 
     cursor: pointer;
+
+    @include adaptiveValue('width', 42, 38);
+    @include adaptiveValue('height', 42, 38);
+    @include adaptiveValue('border-radius', 9, 7);
 
     transition:
       color 0.3s ease,
@@ -781,6 +806,7 @@ const payFromBalance = async () => {
 
     &:disabled {
       opacity: 0.45;
+
       pointer-events: none;
     }
 
@@ -793,24 +819,10 @@ const payFromBalance = async () => {
     }
   }
 
-  @media (max-width: $md3) {
-    grid-template-columns:
-      minmax(0, 1.6fr)
-      minmax(140px, 0.7fr)
-      minmax(100px, 0.4fr)
-      48px;
-
-    &__main {
-      gap: 16px;
-    }
-  }
-
   @media (max-width: $md5) {
     grid-template-columns:
       minmax(0, 1fr)
       42px;
-
-    gap: 14px;
 
     &__main {
       align-items: flex-start;
@@ -837,50 +849,16 @@ const payFromBalance = async () => {
 
       font-family: var(--font-gabarito);
       font-weight: 700;
-
-      :deep(.price__number),
-      :deep(.price__symbol) {
-        font-size: 16px;
-        line-height: 20px;
-        font-weight: 700;
-      }
-    }
-
-    &__remove {
-      align-self: start;
     }
   }
 
   @media (max-width: $md8) {
-    &__main {
-      gap: 10px;
-    }
-
-    &__image {
-      width: 70px;
-      height: 53px;
-
-      border-radius: 7px;
-    }
-
     &__title {
-      font-size: 13px;
-      line-height: 17px;
-
       -webkit-line-clamp: 1;
-
-      &:not(:last-child) {
-        margin-bottom: 2px;
-      }
     }
 
     &__genre {
       display: none;
-    }
-
-    &__mobile-meta {
-      font-size: 10px;
-      line-height: 14px;
     }
 
     &__mobile-price {
@@ -892,45 +870,36 @@ const payFromBalance = async () => {
         line-height: 17px;
       }
     }
-
-    &__remove {
-      width: 38px;
-      height: 38px;
-    }
   }
 }
 
-/* ==============================
+/* =========================================
    ORDER SUMMARY
-============================== */
+========================================= */
 
 .summary-card {
-  padding: 27px 30px;
-
   border: 2px solid var(--border-primary-color);
-
-  border-radius: 14px;
 
   background-color: var(--bg-secondary-color);
 
-  @media (max-width: $md8) {
-    padding: 18px 17px;
-
-    border-radius: 10px;
-  }
+  @include adaptiveValue('padding-top', 27, 18);
+  @include adaptiveValue('padding-right', 30, 17);
+  @include adaptiveValue('padding-bottom', 27, 18);
+  @include adaptiveValue('padding-left', 30, 17);
+  @include adaptiveValue('border-radius', 14, 10);
 
   &__label {
     color: var(--seconday-color);
 
-    font-size: 10px;
-    line-height: 14px;
     font-weight: 700;
-
-    letter-spacing: 2px;
     text-transform: uppercase;
 
+    @include adaptiveValue('font-size', 10, 9);
+    @include adaptiveValue('line-height', 14, 13);
+    @include adaptiveValue('letter-spacing', 2, 1.5);
+
     &:not(:last-child) {
-      margin-bottom: 22px;
+      @include adaptiveValue('margin-bottom', 22, 16);
     }
 
     @media (max-width: $md8) {
@@ -939,9 +908,9 @@ const payFromBalance = async () => {
   }
 
   &__rows {
-    padding-bottom: 18px;
-
     border-bottom: 2px solid var(--border-primary-color);
+
+    @include adaptiveValue('padding-bottom', 18, 15);
   }
 
   &__row {
@@ -949,15 +918,15 @@ const payFromBalance = async () => {
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
+    @include adaptiveValue('gap', 20, 12);
 
     color: var(--seconday-color);
 
-    font-size: 13px;
-    line-height: 18px;
+    @include adaptiveValue('font-size', 13, 11);
+    @include adaptiveValue('line-height', 18, 15);
 
     &:not(:last-child) {
-      margin-bottom: 16px;
+      @include adaptiveValue('margin-bottom', 16, 12);
     }
 
     strong {
@@ -967,77 +936,58 @@ const payFromBalance = async () => {
 
       font-weight: 500;
     }
-
-    @media (max-width: $md8) {
-      font-size: 11px;
-      line-height: 15px;
-    }
   }
 
   &__total {
-    padding-top: 20px;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
-
     color: var(--primary-color);
 
-    font-size: 14px;
-    line-height: 20px;
+    @include adaptiveValue('gap', 20, 12);
+    @include adaptiveValue('padding-top', 20, 17);
+    @include adaptiveValue('font-size', 14, 12);
+    @include adaptiveValue('line-height', 20, 17);
 
     strong {
       font-family: var(--font-gabarito);
       font-weight: 900;
+      line-height: 1;
 
       @include adaptiveValue('font-size', 29, 22);
-
-      line-height: 1;
-    }
-
-    @media (max-width: $md8) {
-      padding-top: 17px;
-
-      font-size: 12px;
     }
   }
 }
 
-/* ==============================
+/* =========================================
    BALANCE
-============================== */
+========================================= */
 
 .balance-card {
-  padding: 25px 30px;
-
   border: 2px solid var(--hint-primary-color);
-
-  border-radius: 14px;
 
   background-color: var(--bg-secondary-color);
 
-  @media (max-width: $md8) {
-    padding: 18px 17px;
-
-    border-radius: 10px;
-  }
+  @include adaptiveValue('padding-top', 25, 18);
+  @include adaptiveValue('padding-right', 30, 17);
+  @include adaptiveValue('padding-bottom', 25, 18);
+  @include adaptiveValue('padding-left', 30, 17);
+  @include adaptiveValue('border-radius', 14, 10);
 
   &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
-
     color: var(--seconday-color);
 
-    font-size: 13px;
-    line-height: 18px;
+    @include adaptiveValue('gap', 20, 12);
+    @include adaptiveValue('font-size', 13, 11);
+    @include adaptiveValue('line-height', 18, 15);
 
     &:not(:last-child) {
-      margin-bottom: 18px;
+      @include adaptiveValue('margin-bottom', 18, 14);
     }
 
     strong {
@@ -1045,16 +995,9 @@ const payFromBalance = async () => {
 
       color: var(--primary-color);
 
-      font-size: 15px;
       font-weight: 600;
-    }
 
-    @media (max-width: $md8) {
-      font-size: 11px;
-
-      strong {
-        font-size: 12px;
-      }
+      @include adaptiveValue('font-size', 15, 12);
     }
   }
 
@@ -1062,18 +1005,20 @@ const payFromBalance = async () => {
     display: flex;
     align-items: center;
 
-    gap: 10px;
+    @include adaptiveValue('gap', 10, 7);
   }
 
   &__wallet {
-    width: 15px;
-    height: 11px;
+    position: relative;
+
+    flex: 0 0 auto;
 
     border: 2px solid var(--hint-primary-color);
 
     border-radius: 2px;
 
-    position: relative;
+    @include adaptiveValue('width', 15, 13);
+    @include adaptiveValue('height', 11, 10);
 
     &::after {
       content: '';
@@ -1093,17 +1038,13 @@ const payFromBalance = async () => {
   }
 
   &__form {
-    margin-top: 24px;
+    @include adaptiveValue('margin-top', 24, 18);
   }
 
   &__button {
     width: 100%;
 
-    min-height: 50px;
-
-    @media (max-width: $md8) {
-      min-height: 45px;
-    }
+    @include adaptiveValue('min-height', 50, 45);
   }
 
   &__top-up {
@@ -1111,13 +1052,16 @@ const payFromBalance = async () => {
 
     display: block;
 
-    margin: 16px auto 0;
+    margin-left: auto;
+    margin-right: auto;
 
     color: var(--hint-primary-color);
 
-    font-size: 12px;
-    line-height: 16px;
     font-weight: 500;
+
+    @include adaptiveValue('margin-top', 16, 13);
+    @include adaptiveValue('font-size', 12, 10);
+    @include adaptiveValue('line-height', 16, 14);
 
     transition: opacity 0.3s ease;
 
@@ -1126,38 +1070,21 @@ const payFromBalance = async () => {
         opacity: 0.7;
       }
     }
-
-    @media (max-width: $md8) {
-      margin-top: 13px;
-
-      font-size: 10px;
-    }
   }
 
   &__error {
-    margin-top: 14px;
-
     color: var(--error-color);
 
-    font-size: 12px;
-    line-height: 17px;
-
     text-align: center;
+
+    @include adaptiveValue('margin-top', 14, 10);
+    @include adaptiveValue('font-size', 12, 10);
+    @include adaptiveValue('line-height', 17, 14);
   }
 }
 
-/* ==============================
-   MOBILE
-============================== */
-
 @media (max-width: $md8) {
   .cart-page {
-    &__title {
-      &:not(:last-child) {
-        margin-bottom: 16px;
-      }
-    }
-
     &__layout {
       display: flex;
       flex-direction: column;
@@ -1166,16 +1093,6 @@ const payFromBalance = async () => {
     &__products,
     &__aside {
       width: 100%;
-    }
-  }
-
-  .cart-products {
-    &__list {
-      border-top: 0;
-    }
-
-    &__bottom {
-      gap: 10px;
     }
   }
 }

@@ -24,6 +24,8 @@ import { CartIcon, FavoriteIcon, SearchIcon } from '../ui/icons/index.js'
 
 import SvgIcon from '../ui/icons/SvgIcon.vue'
 
+const IS_LOGIN_MODAL_ACTIVE = false
+
 const loginModalStore = useLoginModalStore()
 const regModalStore = useRegModalStore()
 const authStore = useAuthStore()
@@ -71,6 +73,14 @@ const closeMobileMenu = () => {
   isMobileNavMenuVisible.value = false
 }
 
+const closeHeaderMenus = () => {
+  closeMobileMenu()
+
+  if (menuStore.isMenuOpen) {
+    menuStore.toggleMenu()
+  }
+}
+
 const goToProfile = () => {
   router.push({
     name: 'profile',
@@ -92,14 +102,37 @@ const goToCart = () => {
   closeMobileMenu()
 }
 
+
 const openLogin = () => {
-  loginModalStore.openModal()
-  closeMobileMenu()
+  closeHeaderMenus()
+
+  if (IS_LOGIN_MODAL_ACTIVE) {
+    loginModalStore.openModal()
+    return
+  }
+
+  router.push({
+    name: 'auth',
+    query: {
+      type: 'login',
+    },
+  })
 }
 
 const openRegistration = () => {
-  regModalStore.openModal()
-  closeMobileMenu()
+  closeHeaderMenus()
+
+  if (IS_LOGIN_MODAL_ACTIVE) {
+    regModalStore.openModal()
+    return
+  }
+
+  router.push({
+    name: 'auth',
+    query: {
+      type: 'signup',
+    },
+  })
 }
 
 const toggleMobileMenu = () => {
@@ -156,7 +189,6 @@ watch(search, (value) => {
 
   if (sanitized !== value) {
     search.value = sanitized
-
     return
   }
 
@@ -197,19 +229,13 @@ watch(
 
 onMounted(() => {
   tabletMedia = window.matchMedia('(max-width: 991.98px)')
-
   smallTabletMedia = window.matchMedia('(max-width: 767.98px)')
-
   mobileMedia = window.matchMedia('(max-width: 619.98px)')
-
   smallMobileMedia = window.matchMedia('(max-width: 479.98px)')
 
   tabletMedia.addEventListener('change', updateBreakpoints)
-
   smallTabletMedia.addEventListener('change', updateBreakpoints)
-
   mobileMedia.addEventListener('change', updateBreakpoints)
-
   smallMobileMedia.addEventListener('change', updateBreakpoints)
 
   updateBreakpoints()
@@ -230,11 +256,8 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
 
   tabletMedia?.removeEventListener('change', updateBreakpoints)
-
   smallTabletMedia?.removeEventListener('change', updateBreakpoints)
-
   mobileMedia?.removeEventListener('change', updateBreakpoints)
-
   smallMobileMedia?.removeEventListener('change', updateBreakpoints)
 
   if (headerResizeObserver) {
@@ -245,7 +268,6 @@ onBeforeUnmount(() => {
   document.documentElement.style.removeProperty('--header-height')
 })
 </script>
-
 <template>
   <header
     ref="headerRef"

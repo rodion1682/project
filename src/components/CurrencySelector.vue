@@ -1,21 +1,9 @@
-<template>
-  <div v-show="currStore.currencies" class="select" v-bind="wrapperAttrs">
-    <select
-      v-model="selectedCurrency"
-      class="select__field"
-      v-bind="selectAttrs"
-      @change="changeCurr"
-    >
-      <option v-for="(item, i) in currStore.currencies" :key="i" :value="item">
-        {{ item.code }}
-      </option>
-    </select>
-  </div>
-</template>
-
 <script setup>
+import { computed, ref, useAttrs, watch } from 'vue'
+
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+
 import { useCurrStore } from '@/stores/currencies'
-import { computed, ref, useAttrs, watchEffect } from 'vue'
 
 defineOptions({
   inheritAttrs: false,
@@ -24,17 +12,26 @@ defineOptions({
 const attrs = useAttrs()
 
 const currStore = useCurrStore()
-const selectedCurrency = ref(null)
 
-const wrapperAttrs = computed(() => {
-  return {
-    class: attrs.class,
-    'data-da': attrs['data-da'],
-  }
+const selectedCurrency = ref('')
+const isChanging = ref(false)
+
+const currencies = computed(() => {
+  return Array.isArray(currStore.currencies) ? currStore.currencies : []
+})
+
+const currencyOptions = computed(() => {
+  return currencies.value.map((currency) => ({
+    label: currency.code,
+    value: currency.code,
+    currency,
+  }))
 })
 
 const selectAttrs = computed(() => {
-  const rest = { ...attrs }
+  const rest = {
+    ...attrs,
+  }
 
   delete rest.class
   delete rest['data-da']
@@ -42,111 +39,103 @@ const selectAttrs = computed(() => {
   return rest
 })
 
-const changeCurr = () => {
-  if (!selectedCurrency.value) return
+const changeCurrency = async (option) => {
+  const currency = option?.currency
 
-  currStore.setActiveCurrency(selectedCurrency.value)
+  if (!currency || isChanging.value) {
+    return
+  }
+
+  if (currency.code === currStore.currency?.code) {
+    return
+  }
+
+  isChanging.value = true
+
+  try {
+    await currStore.setActiveCurrency(currency)
+  } finally {
+    isChanging.value = false
+  }
 }
 
-watchEffect(() => {
-  selectedCurrency.value = currStore.currency
-})
+watch(
+  () => currStore.currency?.code,
+  (currencyCode) => {
+    selectedCurrency.value = currencyCode || ''
+  },
+  {
+    immediate: true,
+  },
+)
 </script>
 
-<style lang="scss">
+<template>
+  <BaseSelect
+    v-if="currencies.length"
+    v-model="selectedCurrency"
+    :options="currencyOptions"
+    option-label="label"
+    option-value="value"
+    :disabled="isChanging"
+    :class="['currency-select', attrs.class]"
+    :data-da="attrs['data-da']"
+    v-bind="selectAttrs"
+    @change="changeCurrency"
+  />
+</template>
+
+<style scoped lang="scss">
 @use '@/assets/styles/mixins' as *;
 @use '@/assets/styles/media' as *;
 @use '@/assets/styles/classes' as *;
 
-.select {
-  position: relative;
-
-  min-width: 82px;
+.currency-select {
   width: fit-content;
+  min-width: 82px;
 
-  border: 2px solid var(--border-primary-color);
-  border-radius: 10px;
-
-  background-color: var(--bg-secondary-color);
-
-  transition:
-    border-color 0.3s ease,
-    background-color 0.3s ease;
   @media (max-width: $md4) {
     width: 100%;
   }
 
-  &::after {
-    content: '';
-
-    position: absolute;
-    top: 50%;
-    right: 14px;
-
-    width: 8px;
-    height: 8px;
-
-    border-right: 2px solid var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
-
-    transform: translateY(-70%) rotate(45deg);
-
-    pointer-events: none;
-  }
-
-  &:focus-within {
-    border-color: var(--hint-primary-color);
-  }
-
-  @media (any-hover: hover) {
-    &:hover {
-      border-color: var(--hint-primary-color);
-    }
-  }
-
-  &__field {
-    width: 100%;
-    min-width: 0;
+  :deep(.base-select__control) {
     min-height: 48px;
 
-    padding: 0 38px 0 15px;
+    padding-left: 15px;
+    padding-right: 38px;
 
-    border: none;
-    outline: none;
-
-    appearance: none;
-    -webkit-appearance: none;
-
-    background-color: transparent;
-
-    color: var(--primary-color);
-
-    font-family: var(--font-open-sans);
     font-size: 14px;
-    font-weight: 700;
     line-height: 100%;
-
-    cursor: pointer;
-
-    option {
-      color: var(--primary-color);
-      background-color: var(--bg-secondary-color);
-    }
-
-    &:disabled {
-      cursor: default;
-    }
+    font-weight: 700;
   }
 
-  &:has(.select__field:disabled) {
-    opacity: 0.5;
-    pointer-events: none;
+  :deep(.base-select__value) {
+    color: var(--primary-color);
+
+    font-size: 14px;
+    line-height: 100%;
+    font-weight: 700;
+  }
+
+  :deep(.base-select__chevron) {
+    right: 14px;
+
+    border-color: var(--primary-color);
+  }
+
+  :deep(.base-select__dropdown) {
+    min-width: 100%;
+  }
+
+  :deep(.base-select__option) {
+    font-size: 14px;
+    font-weight: 600;
   }
 
   @media (max-width: $md7) {
     width: 100%;
 
-    &__field {
+    :deep(.base-select__control) {
       min-height: 45px;
     }
   }

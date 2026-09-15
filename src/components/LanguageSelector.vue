@@ -1,21 +1,9 @@
-<template>
-  <div v-show="currentLanguage && allLanguages.length > 1" class="select" v-bind="wrapperAttrs">
-    <select
-      v-model="activeLang"
-      class="select__field"
-      v-bind="selectAttrs"
-      @change="selectLanguage($event.target.value)"
-    >
-      <option v-for="lang in allLanguages" :key="lang.id" :value="lang.id">
-        {{ lang.title }}
-      </option>
-    </select>
-  </div>
-</template>
-
 <script setup>
+import { computed, ref, useAttrs, watch } from 'vue'
+
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+
 import { useGlobalStore } from '@/stores/global'
-import { computed, ref, useAttrs, watchEffect } from 'vue'
 
 defineOptions({
   inheritAttrs: false,
@@ -26,22 +14,27 @@ const attrs = useAttrs()
 const globalStore = useGlobalStore()
 
 const activeLang = ref('')
+const isChanging = ref(false)
 
-const currentLanguage = computed(() => globalStore.currentLanguage)
-
-const allLanguages = computed(() => {
-  return globalStore.languages || []
+const currentLanguage = computed(() => {
+  return globalStore.currentLanguage
 })
 
-const wrapperAttrs = computed(() => {
-  return {
-    class: attrs.class,
-    'data-da': attrs['data-da'],
-  }
+const allLanguages = computed(() => {
+  return Array.isArray(globalStore.languages) ? globalStore.languages : []
+})
+
+const languageOptions = computed(() => {
+  return allLanguages.value.map((lang) => ({
+    label: lang.title,
+    value: lang.id,
+  }))
 })
 
 const selectAttrs = computed(() => {
-  const rest = { ...attrs }
+  const rest = {
+    ...attrs,
+  }
 
   delete rest.class
   delete rest['data-da']
@@ -49,112 +42,101 @@ const selectAttrs = computed(() => {
   return rest
 })
 
-const selectLanguage = async (langId) => {
-  if (!langId) return
+const selectLanguage = async (option) => {
+  const langId = option?.id ?? option?.value
 
-  await globalStore.changeLocale(langId)
+  if (!langId || langId === currentLanguage.value || isChanging.value) {
+    return
+  }
+
+  isChanging.value = true
+
+  try {
+    await globalStore.changeLocale(langId)
+  } finally {
+    isChanging.value = false
+  }
 }
 
-watchEffect(() => {
-  if (currentLanguage.value) {
-    activeLang.value = currentLanguage.value
-  }
-})
+watch(
+  currentLanguage,
+  (language) => {
+    if (language) {
+      activeLang.value = language
+    }
+  },
+  {
+    immediate: true,
+  },
+)
 </script>
 
-<style lang="scss">
+<template>
+  <BaseSelect
+    v-if="currentLanguage && allLanguages.length > 1"
+    v-model="activeLang"
+    :options="languageOptions"
+    option-label="label"
+    option-value="value"
+    :disabled="isChanging"
+    :class="['language-select', attrs.class]"
+    :data-da="attrs['data-da']"
+    v-bind="selectAttrs"
+    @change="selectLanguage"
+  />
+</template>
+
+<style scoped lang="scss">
 @use '@/assets/styles/mixins' as *;
 @use '@/assets/styles/media' as *;
 @use '@/assets/styles/classes' as *;
 
-.select {
-  position: relative;
-
-  min-width: 82px;
+.language-select {
   width: fit-content;
+  min-width: 82px;
 
-  border: 2px solid var(--border-primary-color);
-  border-radius: 10px;
-
-  background-color: var(--bg-secondary-color);
-
-  transition:
-    border-color 0.3s ease,
-    background-color 0.3s ease;
   @media (max-width: $md4) {
     width: 100%;
   }
-  &::after {
-    content: '';
 
-    position: absolute;
-    top: 50%;
-    right: 14px;
-
-    width: 8px;
-    height: 8px;
-
-    border-right: 2px solid var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
-
-    transform: translateY(-70%) rotate(45deg);
-
-    pointer-events: none;
-  }
-
-  &:focus-within {
-    border-color: var(--hint-primary-color);
-  }
-
-  @media (any-hover: hover) {
-    &:hover {
-      border-color: var(--hint-primary-color);
-    }
-  }
-
-  &__field {
-    width: 100%;
-    min-width: 0;
+  :deep(.base-select__control) {
     min-height: 48px;
 
-    padding: 0 38px 0 15px;
+    padding-left: 15px;
+    padding-right: 38px;
 
-    border: none;
-    outline: none;
-
-    appearance: none;
-    -webkit-appearance: none;
-
-    background-color: transparent;
-
-    color: var(--primary-color);
-
-    font-family: var(--font-open-sans);
     font-size: 14px;
-    font-weight: 700;
     line-height: 100%;
-
-    cursor: pointer;
-
-    option {
-      color: var(--primary-color);
-      background-color: var(--bg-secondary-color);
-    }
-
-    &:disabled {
-      cursor: default;
-    }
+    font-weight: 700;
   }
 
-  &:has(.select__field:disabled) {
-    opacity: 0.5;
-    pointer-events: none;
+  :deep(.base-select__value) {
+    color: var(--primary-color);
+
+    font-size: 14px;
+    line-height: 100%;
+    font-weight: 700;
+  }
+
+  :deep(.base-select__chevron) {
+    right: 14px;
+
+    border-color: var(--primary-color);
+  }
+
+  :deep(.base-select__dropdown) {
+    min-width: 100%;
+  }
+
+  :deep(.base-select__option) {
+    font-size: 14px;
+    font-weight: 600;
   }
 
   @media (max-width: $md7) {
     width: 100%;
 
-    &__field {
+    :deep(.base-select__control) {
       min-height: 45px;
     }
   }

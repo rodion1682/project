@@ -8,13 +8,14 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+
+import { EmptyIcon } from '@/components/ui/icons/index.js'
 
 import { useCategoriesStore } from '@/stores/categories'
 import { useCurrStore } from '@/stores/currencies'
 import { useProductsStore } from '@/stores/products'
 
-import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
-import { EmptyIcon } from '@/components/ui/icons/index.js'
 import ProductListItem from './components/ProductListItem.vue'
 
 const props = defineProps({
@@ -41,7 +42,6 @@ const currStore = useCurrStore()
 const currentPage = ref(1)
 
 const activeSort = ref('')
-const activePrice = ref('')
 const selectedCategory = ref(props.category)
 
 const search = ref(String(route.query.search || ''))
@@ -62,10 +62,12 @@ const updateItemsPerPage = () => {
     nextValue = 8
   }
 
-  if (itemsPerPage.value !== nextValue) {
-    itemsPerPage.value = nextValue
-    currentPage.value = 1
+  if (itemsPerPage.value === nextValue) {
+    return
   }
+
+  itemsPerPage.value = nextValue
+  currentPage.value = 1
 }
 
 const currentPlatform = computed(() => {
@@ -144,23 +146,20 @@ const breadcrumbs = computed(() => {
 
 const sortOptions = computed(() => [
   {
-    label: t('Best selling'),
-    value: '',
-  },
-])
-
-const priceOptions = computed(() => [
-  {
-    label: t('Any'),
+    label: t('Default'),
     value: '',
   },
   {
-    label: t('Highest first'),
-    value: '-price',
+    label: t('Newest'),
+    value: 'newest',
   },
   {
-    label: t('Lowest first'),
+    label: t('Price: low to high'),
     value: 'price',
+  },
+  {
+    label: t('Price: high to low'),
+    value: '-price',
   },
 ])
 
@@ -175,10 +174,6 @@ const categoryOptions = computed(() => [
     value: item.slug,
   })),
 ])
-
-const productSort = computed(() => {
-  return activePrice.value || activeSort.value
-})
 
 const filteredProducts = computed(() => {
   if (!Array.isArray(productsStore.products)) {
@@ -208,9 +203,7 @@ const canFetchProducts = computed(() => {
 })
 
 const hasActiveFilters = computed(() => {
-  return Boolean(
-    activeSort.value || activePrice.value || debouncedSearch.value || props.category !== 'all',
-  )
+  return Boolean(activeSort.value || debouncedSearch.value || props.category !== 'all')
 })
 
 const fetchProducts = () => {
@@ -221,7 +214,7 @@ const fetchProducts = () => {
   productsStore.getProducts(
     categoryId.value,
     currentPage.value,
-    productSort.value,
+    activeSort.value,
     debouncedSearch.value,
     itemsPerPage.value,
   )
@@ -236,7 +229,6 @@ const goToCategory = (value) => {
 
   router.push({
     path: `/products/${props.platform}/${value}`,
-
     query: route.query.search
       ? {
           search: route.query.search,
@@ -249,7 +241,6 @@ const resetFilters = async () => {
   clearTimeout(searchTimeout)
 
   activeSort.value = ''
-  activePrice.value = ''
   search.value = ''
   debouncedSearch.value = ''
   selectedCategory.value = 'all'
@@ -286,6 +277,8 @@ watch(
 watch(
   () => props.platform,
   () => {
+    activeSort.value = ''
+    selectedCategory.value = props.category
     currentPage.value = 1
   },
 )
@@ -293,7 +286,11 @@ watch(
 watch(
   () => route.query.search,
   (value) => {
-    search.value = String(value || '')
+    const nextValue = String(value || '')
+
+    if (search.value !== nextValue) {
+      search.value = nextValue
+    }
   },
 )
 
@@ -314,7 +311,7 @@ watch(
     () => categoryId.value,
     () => props.platform,
     () => props.category,
-    () => productSort.value,
+    () => activeSort.value,
     () => currentPage.value,
     () => debouncedSearch.value,
     () => itemsPerPage.value,
@@ -376,13 +373,6 @@ onBeforeUnmount(() => {
             :options="categoryOptions"
             @update:model-value="goToCategory"
           />
-
-          <BaseSelect
-            v-model="activePrice"
-            class="products-list-page__select"
-            :label="$t('Price')"
-            :options="priceOptions"
-          />
         </div>
 
         <div v-if="productsStore.meta?.total !== undefined" class="products-list-page__total">
@@ -414,10 +404,16 @@ onBeforeUnmount(() => {
         </h2>
 
         <p class="products-list-page__empty-text">
-          {{ $t('Try changing your filters or search to find what you are looking for.') }}
+          {{
+            $t(
+              hasActiveFilters
+                ? 'Try changing your filters or search to find what you are looking for.'
+                : 'There are no products available in this category yet.',
+            )
+          }}
         </p>
 
-        <BaseButton class="products-list-page__reset" @click="resetFilters">
+        <BaseButton v-if="hasActiveFilters" class="products-list-page__reset" @click="resetFilters">
           {{ $t('Reset filters') }}
         </BaseButton>
       </div>
@@ -473,6 +469,7 @@ onBeforeUnmount(() => {
   }
 
   &__heading {
+    width: 100%;
     min-width: 0;
 
     &:not(:last-child) {
@@ -527,6 +524,7 @@ onBeforeUnmount(() => {
     min-width: 0;
 
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
 
     @include adaptiveValue('gap', 14, 8);
@@ -553,6 +551,7 @@ onBeforeUnmount(() => {
 
     font-weight: 400;
     text-transform: uppercase;
+    white-space: nowrap;
 
     @include adaptiveValue('font-size', 13, 11);
     @include adaptiveValue('line-height', 18, 15);

@@ -1,14 +1,16 @@
-import HomeView from '@/views/HomePage/HomeView.vue'
-import PlatformListView from '@/views/ProductPages/PlatformListView.vue'
-
-import PlatformView from '@/views/ProductPages/PlatformView.vue'
-import ProductListView from '@/views/ProductPages/ProductListView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
+import HomeView from '@/views/HomePage/HomeView.vue'
+import PlatformListView from '@/views/ProductPages/PlatformListView.vue'
+import PlatformView from '@/views/ProductPages/PlatformView.vue'
+import ProductListView from '@/views/ProductPages/ProductListView.vue'
+
+import AuthView from '@/views/AuthPage/AuthView.vue'
 import CartView from '@/views/CartPage/CartView.vue'
 import GameView from '@/views/GamePage/GameView.vue'
 import GiftCardView from '@/views/GiftPage/GiftCardView.vue'
 import WishListView from '@/views/WishListPage/WishListView.vue'
+
 import ContactView from '../views/ContactView.vue'
 import FailPayment from '../views/FailPayment.vue'
 import FaqView from '../views/FaqView.vue'
@@ -25,6 +27,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+    },
+    {
+      path: '/auth',
+      name: 'auth',
+      component: AuthView,
     },
     {
       path: '/faq',
@@ -70,7 +77,6 @@ const router = createRouter({
       component: GameView,
       props: true,
     },
-
     {
       path: '/profile/:page/:order?',
       name: 'profile',
