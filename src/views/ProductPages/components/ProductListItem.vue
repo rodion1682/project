@@ -25,19 +25,19 @@ const wishListStore = useWishListStore()
 const isLoading = ref(false)
 
 const category = computed(() => {
-  if (!item.value?.categories || !Array.isArray(item.value.categories)) {
+  if (!Array.isArray(item.value?.categories)) {
     return null
   }
 
-  return item.value.categories.find((categoryItem) => categoryItem.parent !== null)
+  return item.value.categories.find((categoryItem) => categoryItem?.parent !== null) || null
 })
 
 const isFavorite = computed(() => {
-  if (!Array.isArray(wishListStore.items)) {
+  if (!Array.isArray(wishListStore.items) || !item.value?.id) {
     return false
   }
 
-  return wishListStore.items.some((wishItem) => wishItem.id === item.value.id)
+  return wishListStore.items.some((wishItem) => Number(wishItem?.id) === Number(item.value.id))
 })
 
 const getProductLink = (product) => {
@@ -45,7 +45,7 @@ const getProductLink = (product) => {
     return '/products'
   }
 
-  const productCategory = product.categories.find((categoryItem) => categoryItem.parent !== null)
+  const productCategory = product.categories.find((categoryItem) => categoryItem?.parent !== null)
 
   if (!productCategory?.parent) {
     return '/products'
@@ -70,7 +70,7 @@ const toggleFavorite = async () => {
     if (isFavorite.value) {
       await wishListStore.remove(item.value.id)
     } else {
-      await wishListStore.add(item.value.id)
+      await wishListStore.add(item.value)
     }
   } finally {
     isLoading.value = false
@@ -82,6 +82,7 @@ const toggleFavorite = async () => {
   <RouterLink v-if="item" :to="getProductLink(item)" class="product-list-item">
     <div class="product-list-item__image _ibg">
       <img v-if="item.image" :src="item.image" :alt="item.title" />
+
       <div v-if="category" class="product-list-item__slug-title">
         {{ category.title }}
       </div>
@@ -93,6 +94,7 @@ const toggleFavorite = async () => {
           active: isFavorite,
         }"
         :disabled="isLoading"
+        :aria-label="isFavorite ? $t('Remove from wishlist') : $t('Add to wishlist')"
         @click.prevent.stop="toggleFavorite"
       >
         <SvgIcon
@@ -111,9 +113,13 @@ const toggleFavorite = async () => {
         {{ item.title }}
       </div>
     </div>
+
     <div class="product-list-item__bottom">
       <PriceFormatter size="size-21-market" :price="item.price" class="product-list-item__price" />
-      <div class="product-list-item__vat">{{ $t('incl. vat') }}</div>
+
+      <div class="product-list-item__vat">
+        {{ $t('incl. vat') }}
+      </div>
     </div>
   </RouterLink>
 </template>
@@ -155,12 +161,15 @@ const toggleFavorite = async () => {
     position: relative;
 
     width: 100%;
+
     padding-bottom: 75%;
 
     overflow: hidden;
+
     @media (max-width: $md8) {
       padding-bottom: 68%;
     }
+
     img {
       transition: transform 0.3s ease;
     }
@@ -173,63 +182,73 @@ const toggleFavorite = async () => {
       }
     }
   }
-  &__slug-title {
-    @include adaptiveValue('top', 10, 6);
 
-    @include adaptiveValue('left', 10, 6);
+  &__slug-title {
     position: absolute;
+
     width: fit-content;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    color: var(--bg-seventh-color);
+
+    font-size: 10px;
+    line-height: 14px;
+
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 6px;
+
+    background-color: var(--bg-secondary-color);
+
+    @include adaptiveValue('top', 10, 6);
+    @include adaptiveValue('left', 10, 6);
     @include adaptiveValue('padding-top', 6, 4);
     @include adaptiveValue('padding-left', 10, 6);
     @include adaptiveValue('padding-bottom', 6, 4);
     @include adaptiveValue('padding-right', 10, 6);
-    font-size: 10px;
-    line-height: 14px;
-    color: var(--bg-seventh-color);
-    text-transform: uppercase;
-    letter-spacing: 1.4px;
-    border-radius: 6px;
-    background-color: var(--bg-secondary-color);
-    border: 2px solid var(--border-primary-color);
-    display: flex;
-    text-align: center;
-    align-items: center;
-    justify-content: center;
+
     @media (max-width: $md8) {
       @include hide-item;
     }
   }
+
   &__favorite {
     position: absolute;
 
-    @include adaptiveValue('top', 10, 6);
-
-    @include adaptiveValue('right', 10, 6);
-
-    @include adaptiveValue('width', 38, 30);
-
-    @include adaptiveValue('height', 38, 30);
+    z-index: 2;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    border: 2px solid var(--border-primary-color);
+    padding: 0;
 
-    @include adaptiveValue('border-radius', 10, 8);
+    border: 2px solid var(--border-primary-color);
 
     background-color: var(--bg-secondary-color);
 
     color: var(--seconday-color);
 
-    z-index: 2;
-
     cursor: pointer;
+
+    @include adaptiveValue('top', 10, 6);
+    @include adaptiveValue('right', 10, 6);
+    @include adaptiveValue('width', 38, 30);
+    @include adaptiveValue('height', 38, 30);
+    @include adaptiveValue('border-radius', 10, 8);
 
     transition:
       border-color 0.3s ease,
       color 0.3s ease,
-      background-color 0.3s ease;
+      background-color 0.3s ease,
+      opacity 0.3s ease;
 
     &.active {
       color: var(--hint-primary-color);
@@ -239,6 +258,7 @@ const toggleFavorite = async () => {
 
     &:disabled {
       opacity: 0.5;
+
       pointer-events: none;
     }
 
@@ -256,11 +276,10 @@ const toggleFavorite = async () => {
   }
 
   &__favorite-icon {
-    @include adaptiveValue('min-width', 18, 15);
-
-    @include adaptiveValue('height', 18, 15);
-
     color: inherit;
+
+    @include adaptiveValue('min-width', 18, 15);
+    @include adaptiveValue('height', 18, 15);
   }
 
   &__top {
@@ -272,11 +291,8 @@ const toggleFavorite = async () => {
     flex-direction: column;
 
     @include adaptiveValue('padding-top', 16, 12);
-
     @include adaptiveValue('padding-right', 18, 12);
-
     @include adaptiveValue('padding-bottom', 34, 22.5);
-
     @include adaptiveValue('padding-left', 18, 16);
   }
 
@@ -285,17 +301,15 @@ const toggleFavorite = async () => {
 
     color: var(--seconday-color);
 
-    @include adaptiveValue('font-size', 11, 10);
-
-    @include adaptiveValue('line-height', 15, 14);
-
-    @include adaptiveValue('letter-spacing', 1.54, 1.4);
-
     text-transform: uppercase;
 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    @include adaptiveValue('font-size', 11, 10);
+    @include adaptiveValue('line-height', 15, 14);
+    @include adaptiveValue('letter-spacing', 1.54, 1.4);
 
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 8, 6);
@@ -307,25 +321,26 @@ const toggleFavorite = async () => {
 
     color: var(--primary-color);
 
-    @include adaptiveValue('font-size', 15, 13);
-
-    @include adaptiveValue('line-height', 20.3, 16.9);
-
     font-weight: 500;
 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    @include adaptiveValue('font-size', 15, 13);
+    @include adaptiveValue('line-height', 20.3, 16.9);
   }
 
   &__bottom {
-    border-top: 2px solid var(--border-primary-color);
     margin-top: auto;
 
     display: flex;
-    gap: 20px;
     align-items: center;
     justify-content: space-between;
+
+    @include adaptiveValue('gap', 20, 10);
+
+    border-top: 2px solid var(--border-primary-color);
 
     @include adaptiveValue('padding-top', 16, 13);
     @include adaptiveValue('padding-left', 18, 12);
@@ -333,12 +348,13 @@ const toggleFavorite = async () => {
     @include adaptiveValue('padding-right', 18, 12);
   }
 
-  &__price {
-  }
   &__vat {
+    flex: 0 0 auto;
+
+    color: var(--seconday-color);
+
     @include adaptiveValue('font-size', 12, 10);
     @include adaptiveValue('line-height', 16, 14);
-    color: var(--seconday-color);
   }
 }
 </style>

@@ -1,21 +1,32 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
+import { useCurrStore } from '@/stores/currencies'
+import { useLoginModalStore } from '@/stores/loginModal'
 import { useWishListStore } from '@/stores/wishlist'
 
+import Loader from '@/components/Loader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
+
 import { FavoriteFilledIcon } from '@/components/ui/icons/index.js'
-import { useI18n } from 'vue-i18n'
+
 import WishlistProductItem from './components/WishlistProductItem.vue'
 
 const { t } = useI18n()
 
-const wishListStore = useWishListStore()
 const router = useRouter()
 
+const authStore = useAuthStore()
+const currStore = useCurrStore()
+const loginModalStore = useLoginModalStore()
+const wishListStore = useWishListStore()
+
+const isLoading = ref(false)
 const isClearing = ref(false)
 
 const breadcrumbs = computed(() => [
@@ -48,6 +59,20 @@ const priceDroppedCount = computed(() => {
   }).length
 })
 
+const loadWishlist = async () => {
+  if (!authStore.isAuth) {
+    return
+  }
+
+  isLoading.value = true
+
+  try {
+    await wishListStore.getItems()
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const clearWishlist = async () => {
   if (!products.value.length || isClearing.value) {
     return
@@ -55,12 +80,8 @@ const clearWishlist = async () => {
 
   isClearing.value = true
 
-  const ids = products.value.map((product) => product.id).filter(Boolean)
-
   try {
-    for (const id of ids) {
-      await wishListStore.remove(id)
-    }
+    await wishListStore.clearWishlist()
   } finally {
     isClearing.value = false
   }
@@ -69,6 +90,38 @@ const clearWishlist = async () => {
 const browseCatalog = () => {
   router.push('/products')
 }
+
+watch(
+  () => currStore.currency?.code,
+  async (currency, previousCurrency) => {
+    if (!currency || !authStore.isAuth || currency === previousCurrency) {
+      return
+    }
+
+    await loadWishlist()
+  },
+)
+
+watch(
+  () => authStore.isAuth,
+  async (isAuth) => {
+    if (isAuth) {
+      await loadWishlist()
+      return
+    }
+
+    wishListStore.clear()
+  },
+)
+
+onMounted(async () => {
+  if (!authStore.isAuth) {
+    loginModalStore.openModal()
+    return
+  }
+
+  await loadWishlist()
+})
 </script>
 
 <template>
@@ -82,16 +135,22 @@ const browseCatalog = () => {
         </h1>
       </div>
 
-      <template v-if="products.length">
+      <div v-if="isLoading && !products.length" class="wishlist-page__loader">
+        <Loader />
+      </div>
+
+      <template v-else-if="products.length">
         <div class="wishlist-page__toolbar">
           <div class="wishlist-page__summary">
             {{ productsCount }}
+
             {{ $t(productsCount === 1 ? 'title' : 'titles') }}
 
             <template v-if="priceDroppedCount">
               <span>·</span>
 
               {{ priceDroppedCount }}
+
               {{ $t('dropped in price') }}
             </template>
           </div>
@@ -103,7 +162,7 @@ const browseCatalog = () => {
               :disabled="isClearing"
               @click="clearWishlist"
             >
-              {{ $t('Clear wishlist') }}
+              {{ isClearing ? $t('Clearing...') : $t('Clear wishlist') }}
             </BaseButton>
           </div>
         </div>
@@ -147,17 +206,19 @@ const browseCatalog = () => {
 .wishlist-page {
   width: 100%;
   min-width: 0;
+
   @include header-indent;
-  @include adaptiveValue('padding-top', 36, 20);
-  @include adaptiveValue('padding-bottom', 104, 50);
+  @include adaptiveValue('padding-top', 32, 18);
+  @include adaptiveValue('padding-bottom', 104, 32);
 
   &__container {
+    width: 100%;
     min-width: 0;
   }
 
   &__breadcrumbs {
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 34, 24);
+      @include adaptiveValue('margin-bottom', 32, 20);
     }
   }
 
@@ -166,34 +227,50 @@ const browseCatalog = () => {
     align-items: center;
     justify-content: space-between;
 
-    gap: 20px;
+    min-width: 0;
+
+    @include adaptiveValue('gap', 20, 12);
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 32, 20);
+      @include adaptiveValue('margin-bottom', 32, 18);
     }
   }
 
   &__title {
+    min-width: 0;
+
     margin: 0;
 
     color: var(--primary-color);
 
     font-family: var(--font-gabarito);
+    font-weight: 700;
+    line-height: 1.1;
 
     @include adaptiveValue('font-size', 42, 30);
+  }
 
-    line-height: 1.1;
-    font-weight: 700;
+  &__loader {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @include adaptiveValue('min-height', 420, 260);
   }
 
   &__toolbar {
+    width: 100%;
+    min-width: 0;
+
     display: flex;
     align-items: center;
 
-    gap: 20px;
+    @include adaptiveValue('gap', 20, 12);
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 28, 18);
+      @include adaptiveValue('margin-bottom', 28, 12);
     }
   }
 
@@ -202,45 +279,46 @@ const browseCatalog = () => {
 
     color: var(--seconday-color);
 
-    font-size: 13px;
-    line-height: 18px;
     font-weight: 700;
-
-    letter-spacing: 1.82px;
-
     text-transform: uppercase;
+    white-space: nowrap;
+
+    @include adaptiveValue('font-size', 13, 11);
+    @include adaptiveValue('line-height', 18, 16);
+    @include adaptiveValue('letter-spacing', 1.82, 1.54);
 
     span {
-      margin: 0 4px;
+      @include adaptiveValue('margin-left', 4, 2);
+      @include adaptiveValue('margin-right', 4, 2);
     }
   }
 
   &__actions {
+    min-width: 0;
+
     display: flex;
     align-items: center;
 
-    gap: 10px;
-
     margin-left: auto;
+
+    @include adaptiveValue('gap', 10, 8);
   }
 
   &__clear {
-    min-width: 0;
     width: fit-content;
+    min-width: 0;
+
+    flex: 0 0 auto;
   }
 
   &__items {
-    display: grid;
-
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-
-    @include adaptiveValue('gap', 20, 14);
-
+    width: 100%;
     min-width: 0;
 
-    @media (max-width: $md1) {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 20, 12);
 
     @media (max-width: $md2) {
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -263,23 +341,19 @@ const browseCatalog = () => {
   }
 
   &__item {
+    width: 100%;
     min-width: 0;
   }
 
   &__empty {
     width: 100%;
-    max-width: 560px;
 
     display: flex;
     align-items: center;
     flex-direction: column;
 
-    margin: 0 auto;
-
-    @include adaptiveValue('padding-top', 70, 35);
-    @include adaptiveValue('padding-bottom', 70, 35);
-    @include adaptiveValue('padding-left', 40, 20);
-    @include adaptiveValue('padding-right', 40, 20);
+    margin-left: auto;
+    margin-right: auto;
 
     border: 2px solid var(--border-primary-color);
     border-radius: 14px;
@@ -288,70 +362,82 @@ const browseCatalog = () => {
 
     text-align: center;
 
+    @include adaptiveValue('max-width', 560, 340);
+    @include adaptiveValue('padding-top', 70, 35);
+    @include adaptiveValue('padding-bottom', 70, 35);
+    @include adaptiveValue('padding-left', 40, 18);
+    @include adaptiveValue('padding-right', 40, 18);
+
     &-box {
       display: flex;
       align-items: center;
       justify-content: center;
-      @include adaptiveValue('min-width', 64, 48);
-      @include adaptiveValue('min-height', 64, 48);
-      &:not(:last-child) {
-        @include adaptiveValue('margin-bottom', 22, 18);
-      }
+
       border: 2px solid var(--hint-primary-color);
       border-radius: 14px;
 
       color: var(--hint-primary-color);
+
+      @include adaptiveValue('width', 64, 48);
+      @include adaptiveValue('height', 64, 48);
+
+      &:not(:last-child) {
+        @include adaptiveValue('margin-bottom', 22, 18);
+      }
     }
 
     &-icon {
-      @include adaptiveValue('min-width', 27, 18);
+      flex: 0 0 auto;
+
+      @include adaptiveValue('width', 27, 18);
       @include adaptiveValue('height', 27, 18);
     }
 
     &-title {
-      margin: 0 0 10px;
+      margin-top: 0;
 
       color: var(--primary-color);
 
       font-family: var(--font-gabarito);
+      font-weight: 700;
+      line-height: 1.2;
 
       @include adaptiveValue('font-size', 26, 22);
-
-      line-height: 1.2;
-      font-weight: 700;
+      @include adaptiveValue('margin-bottom', 10, 8);
     }
 
     &-text {
-      max-width: 430px;
+      width: 100%;
 
-      margin: 0 0 24px;
+      margin-top: 0;
 
       color: var(--seconday-color);
 
-      font-size: 14px;
-      line-height: 22px;
+      @include adaptiveValue('max-width', 430, 300);
+      @include adaptiveValue('font-size', 14, 13);
+      @include adaptiveValue('line-height', 22, 20);
+      @include adaptiveValue('margin-bottom', 24, 18);
     }
   }
 
   &__browse {
     width: fit-content;
 
-    min-width: 160px;
+    @include adaptiveValue('min-width', 160, 145);
   }
 
   @media (max-width: $md5) {
+    &__heading {
+      &:not(:last-child) {
+        margin-bottom: 18px;
+      }
+    }
+
     &__toolbar {
       align-items: flex-start;
       flex-direction: column;
 
       gap: 12px;
-    }
-
-    &__summary {
-      font-size: 11px;
-      line-height: 16px;
-
-      letter-spacing: 1.54px;
     }
 
     &__actions {

@@ -2,17 +2,40 @@ import { defineStore } from 'pinia'
 
 import axios from '@/plugins/axios'
 
+import { useCurrStore } from '@/stores/currencies'
+
+const STORAGE_KEY = 'wishlist'
+
+const getStoredItems = () => {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]')
+
+    return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+
 export const useWishListStore = defineStore('wishlist', {
   state: () => ({
-    items: JSON.parse(localStorage.getItem('wishlist') || '[]'),
+    items: getStoredItems(),
     success: '',
     error: '',
     loader: false,
+    initialized: false,
   }),
 
   actions: {
     save() {
-      localStorage.setItem('wishlist', JSON.stringify(this.items))
+      if (typeof window === 'undefined') {
+        return
+      }
+
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items))
     },
 
     clearMessages() {
@@ -39,14 +62,49 @@ export const useWishListStore = defineStore('wishlist', {
       }, 3000)
     },
 
+    async getItems() {
+      if (this.loader) {
+        return this.items
+      }
+
+      const currStore = useCurrStore()
+
+      this.clearMessages()
+      this.loader = true
+
+      try {
+        const response = await axios.get('user/wishlist/items', {
+          params: {
+            currency: currStore.currency?.code,
+          },
+        })
+
+        const payload = response.data?.payload
+
+        this.items = Array.isArray(payload) ? payload : []
+
+        this.initialized = true
+
+        this.save()
+
+        return this.items
+      } catch (error) {
+        this.showError(error, 'Failed to load wishlist')
+
+        return this.items
+      } finally {
+        this.loader = false
+      }
+    },
+
     async add(product) {
-      const id = typeof product === 'object' ? product.id : product
+      const id = typeof product === 'object' ? product?.id : product
 
       if (!id || this.loader) {
         return false
       }
 
-      if (this.items.some((item) => item.id === id)) {
+      if (this.items.some((item) => Number(item.id) === Number(id))) {
         return true
       }
 
@@ -58,15 +116,10 @@ export const useWishListStore = defineStore('wishlist', {
           id,
         })
 
-        if (typeof product === 'object') {
+        if (typeof product === 'object' && product !== null) {
           this.items.push(product)
-        } else {
-          this.items.push({
-            id,
-          })
+          this.save()
         }
-
-        this.save()
 
         this.showSuccess('Added to wishlist')
 
@@ -81,21 +134,20 @@ export const useWishListStore = defineStore('wishlist', {
     },
 
     async remove(product) {
-      const id = typeof product === 'object' ? product.id : product
+      const id = typeof product === 'object' ? product?.id : product
 
-      if (!id || this.loader) {
+      if (!id) {
         return false
       }
 
       this.clearMessages()
-      this.loader = true
 
       try {
         await axios.post('user/wishlist/remove', {
           id,
         })
 
-        this.items = this.items.filter((item) => item.id !== id)
+        this.items = this.items.filter((item) => Number(item.id) !== Number(id))
 
         this.save()
 
@@ -106,6 +158,38 @@ export const useWishListStore = defineStore('wishlist', {
         this.showError(error, 'Failed to remove from wishlist')
 
         return false
+      }
+    },
+
+    async clearWishlist() {
+      if (!this.items.length) {
+        return true
+      }
+
+      this.clearMessages()
+      this.loader = true
+
+      const ids = this.items.map((item) => item?.id).filter(Boolean)
+
+      try {
+        for (const id of ids) {
+          await axios.post('user/wishlist/remove', {
+            id,
+          })
+        }
+
+        this.items = []
+        this.save()
+
+        this.showSuccess('Wishlist cleared')
+
+        return true
+      } catch (error) {
+        await this.getItems()
+
+        this.showError(error, 'Failed to clear wishlist')
+
+        return false
       } finally {
         this.loader = false
       }
@@ -113,6 +197,8 @@ export const useWishListStore = defineStore('wishlist', {
 
     clear() {
       this.items = []
+      this.initialized = false
+
       this.save()
     },
   },
