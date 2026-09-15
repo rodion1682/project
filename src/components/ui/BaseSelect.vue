@@ -10,30 +10,42 @@ const props = defineProps({
     type: [String, Number, Boolean, Object],
     default: '',
   },
+
   options: {
     type: Array,
     default: () => [],
   },
+
   label: {
     type: String,
     default: '',
   },
+
   placeholder: {
     type: String,
     default: '',
   },
+
   optionLabel: {
     type: String,
     default: 'label',
   },
+
   optionValue: {
     type: String,
     default: 'value',
   },
+
   disabled: {
     type: Boolean,
     default: false,
   },
+
+  error: {
+    type: [String, Array],
+    default: '',
+  },
+
   class: {
     type: [String, Array, Object],
     default: '',
@@ -43,16 +55,27 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change', 'open', 'close'])
 
 const attrs = useAttrs()
+
 const root = ref(null)
 const list = ref(null)
+
 const isOpen = ref(false)
 const activeIndex = ref(-1)
+
+const hasError = computed(() => {
+  if (Array.isArray(props.error)) {
+    return props.error.length > 0
+  }
+
+  return Boolean(props.error)
+})
 
 const selectClasses = computed(() => [
   'base-select',
   props.class,
   {
     open: isOpen.value,
+    error: hasError.value,
     disabled: props.disabled,
   },
 ])
@@ -86,7 +109,9 @@ const displayValue = computed(() => {
 })
 
 const rootAttrs = computed(() => {
-  const rest = { ...attrs }
+  const rest = {
+    ...attrs,
+  }
 
   delete rest.class
   delete rest['data-da']
@@ -98,6 +123,7 @@ const open = async () => {
   if (props.disabled) return
 
   isOpen.value = true
+
   activeIndex.value = Math.max(
     normalizedOptions.value.findIndex((option) => option.value === props.modelValue),
     0,
@@ -114,6 +140,7 @@ const close = () => {
   if (!isOpen.value) return
 
   isOpen.value = false
+
   emit('close')
 }
 
@@ -131,6 +158,7 @@ const selectOption = (option) => {
 
   emit('update:modelValue', option.value)
   emit('change', option.original)
+
   close()
 }
 
@@ -203,53 +231,67 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" :class="selectClasses" :data-da="attrs['data-da']" v-bind="rootAttrs">
-    <button
-      type="button"
-      class="base-select__control"
-      :disabled="disabled"
-      :aria-expanded="isOpen"
-      aria-haspopup="listbox"
-      @click="toggle"
-      @keydown="handleKeydown"
-    >
-      <span v-if="label" class="base-select__label">
-        {{ label }}
-      </span>
-
-      <span class="base-select__value" :class="{ placeholder: !selectedOption }">
-        {{ displayValue }}
-      </span>
-
-      <span class="base-select__chevron" aria-hidden="true" />
-    </button>
-
-    <div
-      v-if="isOpen"
-      ref="list"
-      class="base-select__dropdown"
-      role="listbox"
-      tabindex="-1"
-      @keydown="handleKeydown"
-    >
+    <div class="base-select__content">
       <button
-        v-for="(option, index) in normalizedOptions"
-        :key="`${String(option.value)}-${index}`"
         type="button"
-        class="base-select__option"
-        :class="{
-          selected: option.value === modelValue,
-          active: index === activeIndex,
-          disabled: option.disabled,
-        }"
-        :disabled="option.disabled"
-        role="option"
-        :aria-selected="option.value === modelValue"
-        @mouseenter="activeIndex = index"
-        @click="selectOption(option)"
+        class="base-select__control"
+        :disabled="disabled"
+        :aria-expanded="isOpen"
+        :aria-invalid="hasError || undefined"
+        aria-haspopup="listbox"
+        @click="toggle"
+        @keydown="handleKeydown"
       >
-        {{ option.label }}
+        <span v-if="label" class="base-select__label">
+          {{ label }}
+        </span>
+
+        <span
+          class="base-select__value"
+          :class="{
+            placeholder: !selectedOption,
+          }"
+        >
+          {{ displayValue }}
+        </span>
+
+        <span class="base-select__chevron" aria-hidden="true" />
       </button>
+
+      <div
+        v-if="isOpen"
+        ref="list"
+        class="base-select__dropdown"
+        role="listbox"
+        tabindex="-1"
+        @keydown="handleKeydown"
+      >
+        <button
+          v-for="(option, index) in normalizedOptions"
+          :key="`${String(option.value)}-${index}`"
+          type="button"
+          class="base-select__option"
+          :class="{
+            selected: option.value === modelValue,
+            active: index === activeIndex,
+            disabled: option.disabled,
+          }"
+          :disabled="option.disabled"
+          role="option"
+          :aria-selected="option.value === modelValue"
+          @mouseenter="activeIndex = index"
+          @click="selectOption(option)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
     </div>
+
+    <Transition name="select-error">
+      <div v-if="error" class="base-select__error">
+        {{ Array.isArray(error) ? error[0] : error }}
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -260,8 +302,9 @@ onBeforeUnmount(() => {
 
 .base-select {
   position: relative;
-  width: fit-content;
+  width: 100%;
   min-width: 0;
+
   font-family: var(--font-open-sans);
 
   &.disabled {
@@ -269,28 +312,62 @@ onBeforeUnmount(() => {
     pointer-events: none;
   }
 
+  &.error {
+    .base-select__control {
+      border-color: var(--error-color);
+
+      &:focus-visible {
+        border-color: var(--error-color);
+      }
+    }
+
+    &.open {
+      .base-select__control {
+        border-color: var(--error-color);
+      }
+    }
+  }
+
+  &__content {
+    position: relative;
+
+    width: 100%;
+  }
+
   &__control {
     width: 100%;
     min-width: 0;
     min-height: 44px;
+
     padding: 0 42px 0 16px;
+
     display: flex;
     align-items: center;
     justify-content: flex-start;
+
     gap: 12px;
+
     border: 2px solid var(--border-primary-color);
+
     border-radius: 10px;
+
     background-color: var(--bg-secondary-color);
+
     color: var(--primary-color);
+
     font: inherit;
+
     cursor: pointer;
+
     transition:
       border-color 0.3s ease,
       box-shadow 0.3s ease;
 
     &:focus-visible {
       outline: none;
+
       border-color: var(--hint-primary-color);
+
       box-shadow: 0 0 0 3px var(--bg-third-color);
     }
 
@@ -313,71 +390,105 @@ onBeforeUnmount(() => {
 
   &__label {
     flex: 0 0 auto;
+
     color: var(--seconday-color);
+
     font-size: 14px;
     line-height: 18px;
     font-weight: 400;
+
     white-space: nowrap;
   }
 
   &__value {
     min-width: 0;
+
     overflow: hidden;
+
     color: var(--primary-color);
+
     font-size: 14px;
     line-height: 18px;
     font-weight: 600;
+
     white-space: nowrap;
     text-overflow: ellipsis;
 
     &.placeholder {
       color: var(--seconday-color);
+
       font-weight: 400;
     }
   }
 
   &__chevron {
     position: absolute;
+
     top: 50%;
     right: 16px;
+
     width: 8px;
     height: 8px;
+
     border-right: 2px solid var(--seconday-color);
     border-bottom: 2px solid var(--seconday-color);
+
     transform: translateY(-70%) rotate(45deg);
+
     transition: transform 0.2s ease;
+
     pointer-events: none;
   }
 
   &__dropdown {
     position: absolute;
+
     z-index: var(--menu-z-index);
+
     top: calc(100% + 8px);
     left: 0;
+
     width: 100%;
     min-width: 180px;
     max-height: 260px;
+
     overflow-y: auto;
+
     padding: 6px;
+
     border: 2px solid var(--border-primary-color);
+
     border-radius: 10px;
+
     background-color: var(--bg-secondary-color);
+
     box-shadow: 0 12px 30px rgba(15, 27, 45, 0.12);
+
     outline: none;
   }
 
   &__option {
     width: 100%;
+
     padding: 10px 12px;
+
     border: 0;
+
     border-radius: 7px;
+
     background: transparent;
+
     color: var(--primary-color);
+
     font: inherit;
+
     font-size: 13px;
     line-height: 18px;
+
     text-align: left;
+
     cursor: pointer;
+
     transition:
       background-color 0.2s ease,
       color 0.2s ease;
@@ -394,13 +505,25 @@ onBeforeUnmount(() => {
 
     &.selected {
       background-color: var(--hint-primary-color);
+
       color: var(--light-color);
     }
 
     &.disabled {
       opacity: 0.45;
+
       cursor: default;
     }
+  }
+
+  &__error {
+    margin-top: 6px;
+
+    color: var(--error-color);
+
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
   }
 
   @media (max-width: $md5) {
@@ -408,8 +531,11 @@ onBeforeUnmount(() => {
 
     &__control {
       min-height: 44px;
+
       padding: 0 34px 0 10px;
+
       justify-content: center;
+
       gap: 7px;
     }
 
@@ -424,6 +550,7 @@ onBeforeUnmount(() => {
 
     &__chevron {
       right: 12px;
+
       width: 7px;
       height: 7px;
     }
@@ -432,5 +559,19 @@ onBeforeUnmount(() => {
       min-width: 100%;
     }
   }
+}
+
+.select-error-enter-active,
+.select-error-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.select-error-enter-from,
+.select-error-leave-to {
+  opacity: 0;
+
+  transform: translateY(-4px);
 }
 </style>

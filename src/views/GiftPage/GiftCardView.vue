@@ -10,6 +10,7 @@ import BaseSelect from '@/components/ui/BaseSelect.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import ProductListItem from '@/views/ProductPages/components/ProductListItem.vue'
 
+import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCountriesStore } from '@/stores/countries'
 import { useCurrStore } from '@/stores/currencies'
@@ -556,11 +557,10 @@ watch(
                 {{ $t('Message (optional)') }}
               </span>
 
-              <textarea
+              <BaseTextarea
                 v-model="message"
-                class="gift-form__textarea"
-                :placeholder="$t('Happy birthday — go pick something.')"
-              ></textarea>
+                :placeholder="$t('Happy birthday - go pick something.')"
+              />
             </label>
           </div>
 
@@ -619,18 +619,12 @@ watch(
                 </span>
 
                 <BaseSelect
-                  v-model="holderPhoneCountry"
-                  :options="phoneCountryOptions"
+                  v-model="holderCountry"
+                  :options="countryOptions"
                   :placeholder="$t('Select country')"
-                  :class="{
-                    error: errors.holder_phone_country,
-                  }"
-                  @change="handlePhoneCountryChange"
+                  :error="errors.holder_phone_country"
+                  @change="handleCountryChange"
                 />
-
-                <div v-if="errors.holder_phone_country" class="gift-form__field-error">
-                  {{ errors.holder_phone_country }}
-                </div>
               </label>
 
               <label class="gift-form__field">
@@ -668,11 +662,8 @@ watch(
                     error: errors.holder_country,
                   }"
                   @change="handleCountryChange"
+                  :error="errors.holder_country"
                 />
-
-                <div v-if="errors.holder_country" class="gift-form__field-error">
-                  {{ errors.holder_country }}
-                </div>
               </label>
 
               <label class="gift-form__field">
@@ -739,9 +730,7 @@ watch(
 
               {{ $t('and') }}
 
-              <RouterLink to="/static/privacy-policy">
-                {{ $t('Privacy Notice') }} </RouterLink
-              >.
+              <RouterLink to="/static/privacy-policy"> {{ $t('Privacy Notice') }} </RouterLink>.
             </p>
 
             <div class="gift-form__actions">
@@ -903,7 +892,7 @@ watch(
 
   @include adaptiveValue('border-radius', 18, 12);
 
-  background-color: var(--bg-secondary-color);
+  background-color: var(--bg-primary-color);
 
   &:not(:last-child) {
     @include adaptiveValue('margin-bottom', 30, 18);
@@ -1338,51 +1327,6 @@ watch(
     text-transform: uppercase;
   }
 
-  &__textarea {
-    width: 100%;
-
-    resize: none;
-
-    @include adaptiveValue('min-height', 96, 76);
-
-    @include adaptiveValue('padding', 16, 14);
-
-    border: 2px solid var(--border-primary-color);
-
-    border-radius: 10px;
-
-    outline: none;
-
-    background-color: var(--bg-primary-color);
-
-    color: var(--primary-color);
-
-    font-family: inherit;
-
-    @include adaptiveValue('font-size', 15, 14);
-
-    transition: border-color 0.3s ease;
-
-    &::placeholder {
-      color: var(--seconday-color);
-    }
-
-    &:focus {
-      border-color: var(--hint-primary-color);
-    }
-  }
-
-  &__field-error {
-    margin-top: 6px;
-
-    color: var(--error-color);
-
-    font-size: 12px;
-    line-height: 16px;
-
-    font-weight: 500;
-  }
-
   &__phone-prefix {
     color: var(--primary-color);
 
@@ -1508,12 +1452,6 @@ watch(
       color: var(--success-color);
 
       background-color: var(--bg-sixth-color);
-    }
-  }
-
-  :deep(.base-select.error) {
-    .base-select__control {
-      border-color: var(--error-color);
     }
   }
 }
