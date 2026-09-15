@@ -1,7 +1,8 @@
-import { defineStore } from 'pinia'
 import { useCurrStore } from '@/stores/currencies'
+import { defineStore } from 'pinia'
 
 import axios from '@/plugins/axios'
+
 export const useProfileStore = defineStore('profile', {
   state: () => ({
     profile: {},
@@ -10,49 +11,61 @@ export const useProfileStore = defineStore('profile', {
     orderHistory: [],
     depositHistory: [],
   }),
+
   actions: {
-    getProfile() {
+    async getProfile() {
       const currStore = useCurrStore()
-      axios
-        .get('user/profile', {
-          params: { currency: currStore.currency.code },
-        })
-        .then((res) => {
-          this.profile = res.data
-        })
-    },
-    getOrderHistory() {
-      axios.get('product-orders').then((res) => {
-        this.orderHistory = res.data.data
+
+      const res = await axios.get('user/profile', {
+        params: {
+          currency: currStore.currency.code,
+        },
       })
+
+      this.profile = res.data
+
+      return this.profile
     },
-    getDepositHistory() {
-      axios.get('deposit/history').then((res) => {
-        this.depositHistory = res.data.payload
-      })
+
+    async getOrderHistory() {
+      const res = await axios.get('product-orders')
+
+      this.orderHistory = res.data.data
+
+      return this.orderHistory
     },
-    updateProfile(name, surname, email) {
-      axios
-        .put('user/profile', {
-          name: name,
-          surname: surname,
-          email: email,
-        })
-        .then(() => {
-          let self = this
-          self.success = 'Success'
-          self.error = ''
-          setTimeout(function () {
-            self.success = ''
-          }, 3000)
-        })
-        .catch((err) => {
-          let self = this
-          self.error = err.response.data.message
-          setTimeout(function () {
-            self.error = ''
-          }, 3000)
-        })
+
+    async getDepositHistory() {
+      const res = await axios.get('deposit/history')
+
+      this.depositHistory = res.data.payload
+
+      return this.depositHistory
+    },
+
+    async updateProfile(data) {
+      this.error = ''
+      this.success = ''
+
+      try {
+        const res = await axios.put('user/profile', data)
+
+        this.success = 'Success'
+
+        setTimeout(() => {
+          this.success = ''
+        }, 3000)
+
+        return res.data
+      } catch (error) {
+        this.error = error?.response?.data?.message || 'Failed to update profile'
+
+        setTimeout(() => {
+          this.error = ''
+        }, 3000)
+
+        throw error
+      }
     },
   },
 })
