@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 import { useCategoriesStore } from '@/stores/categories'
-import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -35,31 +35,22 @@ const platformConfig = computed(() => [
   },
   {
     title: t('Gift cards'),
-    search: ['gift card', 'gift'],
+    path: '/gift-card',
     class: 'gift-cards',
   },
 ])
 
-const goToCatalog = () => {
-  router.push('/products')
-}
-
 const platformItems = computed(() => {
   const platforms = Array.isArray(categoriesStore.platforms) ? categoriesStore.platforms : []
 
-  const items = platformConfig.value
+  return platformConfig.value
     .map((config) => {
-      if (!config.search) {
-        const productCount = platforms.reduce((total, item) => {
-          return total + Number(item.products_count ?? item.product_count ?? 0)
-        }, 0)
-
+      if (config.path) {
         return {
-          id: 'all',
+          id: config.path,
           title: config.title,
-          slug: null,
-          image: null,
-          productCount: productCount || null,
+          path: config.path,
+          productCount: null,
           class: config.class,
         }
       }
@@ -82,23 +73,16 @@ const platformItems = computed(() => {
       return {
         id: platform.id,
         title: config.title,
-        slug: platform.slug,
-        image: platform.image,
+        path: `/products/${platform.slug}`,
         productCount: platform.products_count ?? platform.product_count ?? null,
         class: config.class,
       }
     })
     .filter(Boolean)
-
-  return items
 })
 
-const getPlatformLink = (platform) => {
-  if (!platform.slug) {
-    return '/products'
-  }
-
-  return `/products/${platform.slug}`
+const goToCatalog = () => {
+  router.push('/products')
 }
 </script>
 
@@ -119,7 +103,7 @@ const getPlatformLink = (platform) => {
         <RouterLink
           v-for="platform in platformItems"
           :key="platform.id"
-          :to="getPlatformLink(platform)"
+          :to="platform.path"
           class="platforms__item"
           :class="[platform.class, `count-${platformItems.length}`]"
         >
@@ -144,9 +128,11 @@ const getPlatformLink = (platform) => {
 
 .platforms {
   @include adaptiveValue('padding-top', 90, 36);
+
   @media (max-width: $md8) {
     padding-bottom: 32px;
   }
+
   &__container {
   }
 
@@ -157,6 +143,7 @@ const getPlatformLink = (platform) => {
       justify-content: space-between;
       align-items: center;
     }
+
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 26, 18);
     }
@@ -178,11 +165,14 @@ const getPlatformLink = (platform) => {
 
   &__list {
     display: flex;
+
     @include adaptiveValue('gap', 20, 12);
+
     @media (max-width: $md4) {
       gap: 12px;
       flex-wrap: wrap;
     }
+
     @media (max-width: $md8) {
       gap: 10px;
     }
@@ -191,11 +181,16 @@ const getPlatformLink = (platform) => {
   &__item {
     @include adaptiveValue('padding-top', 22, 20);
     @include adaptiveValue('padding-bottom', 22, 20);
+
     padding-left: 20px;
     padding-right: 20px;
+
     border-radius: 14px;
+
     @include adaptiveValue('min-height', 168, 67);
+
     transition: all 0.3s ease 0s;
+
     border: 2px solid transparent;
 
     @media (min-width: $md8) {
@@ -203,54 +198,66 @@ const getPlatformLink = (platform) => {
         background-color: var(--cyan-color);
 
         box-shadow: var(--primary-color) 6px 6px 0px;
+
         .platforms__item-count,
         .platforms__item-title {
           color: var(--primary-color);
         }
       }
+
       &.xbox {
         background-color: var(--yellow-color);
 
         box-shadow: var(--hint-primary-color) 6px 6px 0px;
+
         .platforms__item-count,
         .platforms__item-title {
           color: var(--primary-color);
         }
       }
+
       &.playstation {
         background-color: var(--bg-secondary-color);
 
         box-shadow: var(--cyan-color) 6px 6px 0px;
+
         .platforms__item-count,
         .platforms__item-title {
           color: var(--primary-color);
         }
       }
+
       &.nintendo {
         background-color: var(--hint-primary-color);
 
         box-shadow: var(--yellow-color) 6px 6px 0px;
+
         .platforms__item-count,
         .platforms__item-title {
           color: var(--light-color);
         }
       }
+
       &.gift-cards {
         background-color: var(--bg-secondary-color);
 
         box-shadow: var(--hint-primary-color) 6px 6px 0px;
+
         .platforms__item-count,
         .platforms__item-title {
           color: var(--primary-color);
         }
       }
     }
+
     @media (any-hover: hover) {
       &:hover {
         border-color: var(--border-primary-color);
+
         box-shadow: transparent 6px 6px 0px;
       }
     }
+
     @media (min-width: $md4) {
       &.count-1 {
         flex: 1 1 100%;
@@ -272,14 +279,19 @@ const getPlatformLink = (platform) => {
         flex: 0 1 20%;
       }
     }
+
     @media (max-width: $md4) {
       flex: 0 1 calc(50% - 6px);
     }
+
     @media (max-width: $md8) {
       background-color: var(--bg-secondary-color);
+
       border-color: var(--border-primary-color);
+
       flex: 1 1 100%;
     }
+
     &-title {
       @media (max-width: $md8) {
         font-size: 20px;
@@ -291,7 +303,9 @@ const getPlatformLink = (platform) => {
 
     &-count {
       letter-spacing: 1.92px;
+
       font-weight: 700;
+
       text-transform: uppercase;
     }
   }

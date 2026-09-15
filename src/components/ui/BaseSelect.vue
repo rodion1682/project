@@ -61,6 +61,7 @@ const list = ref(null)
 
 const isOpen = ref(false)
 const activeIndex = ref(-1)
+const dropdownDirection = ref('bottom')
 
 const hasError = computed(() => {
   if (Array.isArray(props.error)) {
@@ -77,6 +78,8 @@ const selectClasses = computed(() => [
     open: isOpen.value,
     error: hasError.value,
     disabled: props.disabled,
+    'open-top': isOpen.value && dropdownDirection.value === 'top',
+    'open-bottom': isOpen.value && dropdownDirection.value === 'bottom',
   },
 ])
 
@@ -119,27 +122,75 @@ const rootAttrs = computed(() => {
   return rest
 })
 
+const getEstimatedDropdownHeight = () => {
+  const optionHeight = 38
+  const dropdownPadding = 12
+  const dropdownBorder = 4
+
+  return Math.min(
+    normalizedOptions.value.length * optionHeight + dropdownPadding + dropdownBorder,
+    260,
+  )
+}
+
+const updateDropdownDirection = () => {
+  if (!root.value) {
+    return
+  }
+
+  const rect = root.value.getBoundingClientRect()
+
+  const gap = 8
+  const viewportPadding = 12
+  const dropdownHeight = getEstimatedDropdownHeight()
+
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+
+  if (spaceBelow >= dropdownHeight + gap) {
+    dropdownDirection.value = 'bottom'
+    return
+  }
+
+  if (spaceAbove >= dropdownHeight + gap) {
+    dropdownDirection.value = 'top'
+    return
+  }
+
+  dropdownDirection.value = spaceAbove > spaceBelow ? 'top' : 'bottom'
+}
+
 const open = async () => {
   if (props.disabled) return
 
+  updateDropdownDirection()
+
   isOpen.value = true
 
-  activeIndex.value = Math.max(
-    normalizedOptions.value.findIndex((option) => option.value === props.modelValue),
-    0,
+  const selectedIndex = normalizedOptions.value.findIndex(
+    (option) => option.value === props.modelValue,
   )
+
+  const firstEnabledIndex = normalizedOptions.value.findIndex((option) => !option.disabled)
+
+  activeIndex.value = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex
 
   emit('open')
 
   await nextTick()
 
-  list.value?.focus()
+  updateDropdownDirection()
+
+  list.value?.focus({
+    preventScroll: true,
+  })
 }
 
 const close = () => {
   if (!isOpen.value) return
 
   isOpen.value = false
+  dropdownDirection.value = 'bottom'
 
   emit('close')
 }
@@ -167,6 +218,10 @@ const moveActive = (direction) => {
 
   let index = activeIndex.value
 
+  if (index < 0) {
+    index = direction > 0 ? -1 : 0
+  }
+
   for (let step = 0; step < normalizedOptions.value.length; step += 1) {
     index = (index + direction + normalizedOptions.value.length) % normalizedOptions.value.length
 
@@ -191,11 +246,13 @@ const handleKeydown = (event) => {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     moveActive(1)
+    return
   }
 
   if (event.key === 'ArrowUp') {
     event.preventDefault()
     moveActive(-1)
+    return
   }
 
   if (event.key === 'Enter' || event.key === ' ') {
@@ -206,6 +263,8 @@ const handleKeydown = (event) => {
     if (option) {
       selectOption(option)
     }
+
+    return
   }
 
   if (event.key === 'Escape') {
@@ -220,12 +279,22 @@ const handleDocumentClick = (event) => {
   }
 }
 
+const handleResize = () => {
+  if (!isOpen.value) {
+    return
+  }
+
+  updateDropdownDirection()
+}
+
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
+  window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -302,6 +371,7 @@ onBeforeUnmount(() => {
 
 .base-select {
   position: relative;
+
   width: 100%;
   min-width: 0;
 
@@ -388,6 +458,20 @@ onBeforeUnmount(() => {
     }
   }
 
+  &.open-bottom {
+    .base-select__dropdown {
+      top: calc(100% + 8px);
+      bottom: auto;
+    }
+  }
+
+  &.open-top {
+    .base-select__dropdown {
+      top: auto;
+      bottom: calc(100% + 8px);
+    }
+  }
+
   &__label {
     flex: 0 0 auto;
 
@@ -405,11 +489,11 @@ onBeforeUnmount(() => {
 
     overflow: hidden;
 
-    color: var(--primary-color);
+    color: var(--third-color);
 
-    font-size: 14px;
+    font-size: 15px;
     line-height: 18px;
-    font-weight: 600;
+    font-weight: 400;
 
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -445,7 +529,6 @@ onBeforeUnmount(() => {
 
     z-index: var(--menu-z-index);
 
-    top: calc(100% + 8px);
     left: 0;
 
     width: 100%;
@@ -453,6 +536,7 @@ onBeforeUnmount(() => {
     max-height: 260px;
 
     overflow-y: auto;
+    overscroll-behavior: contain;
 
     padding: 6px;
 
@@ -534,18 +618,11 @@ onBeforeUnmount(() => {
 
       padding: 0 34px 0 10px;
 
-      justify-content: center;
-
       gap: 7px;
     }
 
     &__label {
       display: none;
-    }
-
-    &__value {
-      font-size: 12px;
-      line-height: 16px;
     }
 
     &__chevron {

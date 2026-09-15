@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
       @include adaptiveValue('margin-bottom', 30, 12);
     }
 
-    @media (max-width: $md5) {
+    @media (max-width: $md4) {
       align-items: stretch;
       flex-direction: column;
 
@@ -458,27 +458,13 @@ onBeforeUnmount(() => {
 
   &__filters {
     display: flex;
-    align-items: center;
-    flex-wrap: wrap;
+    @include adaptiveValue('gap', 14, 8);
 
-    @include adaptiveValue('gap', 10, 8);
-
-    @media (max-width: $md5) {
-      display: grid;
-
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-
-      width: 100%;
-    }
+    width: 100%;
   }
 
   &__select {
-    min-width: 175px;
-
-    @media (max-width: $md5) {
-      width: 100%;
-      min-width: 0;
-    }
+    width: fit-content;
   }
 
   &__total {

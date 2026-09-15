@@ -31,7 +31,6 @@ defineOptions({
 
 const props = defineProps({
   variant: { type: String, default: 'primary' }, // primary | secondary | link | bordered | white | transaprent | dark-secondary
-  // disabled: { type: Boolean, default: false },
   active: { type: Boolean, default: false },
   class: { type: [String, Array, Object], default: '' },
   icon: { type: String, default: '' }, // more | profile | close | arrow

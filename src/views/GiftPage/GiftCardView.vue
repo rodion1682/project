@@ -5,16 +5,18 @@ import { useI18n } from 'vue-i18n'
 import axios from '@/plugins/axios'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import ProductListItem from '@/views/ProductPages/components/ProductListItem.vue'
 
-import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCountriesStore } from '@/stores/countries'
 import { useCurrStore } from '@/stores/currencies'
 import { useLoginModalStore } from '@/stores/loginModal'
+import { usePrefillStore } from '@/stores/prefill'
 import { useProductsStore } from '@/stores/products'
 import { useProfileStore } from '@/stores/profile'
 
@@ -24,6 +26,7 @@ const authStore = useAuthStore()
 const countriesStore = useCountriesStore()
 const currStore = useCurrStore()
 const loginModalStore = useLoginModalStore()
+const prefillStore = usePrefillStore()
 const productsStore = useProductsStore()
 const profileStore = useProfileStore()
 
@@ -32,9 +35,6 @@ const baseValues = [10, 25, 50, 100, 250, 500]
 const amount = ref(50)
 const quantity = ref(1)
 
-const deliveryType = ref('friend')
-
-const recipientEmail = ref('')
 const message = ref('')
 
 const holderFirstName = ref('')
@@ -47,12 +47,15 @@ const holderCity = ref('')
 const holderAddress = ref('')
 const holderZip = ref('')
 
+const termsAccepted = ref(false)
+const termsError = ref('')
+
 const errors = ref({})
 const generalError = ref('')
-const successMessage = ref('')
 
 const isSubmitting = ref(false)
 const isPopularLoading = ref(false)
+const isPrefillReady = ref(false)
 
 const popularProducts = ref([])
 
@@ -134,74 +137,13 @@ const perks = computed(() => [
   },
 ])
 
-const canSubmit = computed(() => {
-  if (!amount.value) {
-    return false
-  }
-
-  if (!holderFirstName.value.trim()) {
-    return false
-  }
-
-  if (!holderLastName.value.trim()) {
-    return false
-  }
-
-  if (!holderEmail.value.trim()) {
-    return false
-  }
-
-  if (!holderPhone.value.trim()) {
-    return false
-  }
-
-  if (!holderPhoneCountry.value) {
-    return false
-  }
-
-  if (!holderCountry.value) {
-    return false
-  }
-
-  if (!holderCity.value.trim()) {
-    return false
-  }
-
-  if (!holderAddress.value.trim()) {
-    return false
-  }
-
-  if (!holderZip.value.trim()) {
-    return false
-  }
-
-  if (deliveryType.value === 'friend' && !recipientEmail.value.trim()) {
-    return false
-  }
-
-  return true
-})
-
 const selectAmount = (value) => {
   amount.value = value
+  clearError('amount')
 }
 
 const normalizePhone = (value) => {
   return String(value || '').replace(/\D/g, '')
-}
-
-const clearError = (field) => {
-  if (!errors.value[field]) {
-    return
-  }
-
-  const updated = {
-    ...errors.value,
-  }
-
-  delete updated[field]
-
-  errors.value = updated
 }
 
 const normalizeError = (value) => {
@@ -210,6 +152,24 @@ const normalizeError = (value) => {
   }
 
   return value || ''
+}
+
+const clearError = (field) => {
+  if (!errors.value[field]) {
+    return
+  }
+
+  const nextErrors = {
+    ...errors.value,
+  }
+
+  delete nextErrors[field]
+
+  errors.value = nextErrors
+}
+
+const clearTermsError = () => {
+  termsError.value = ''
 }
 
 const applyBackendErrors = (error) => {
@@ -227,54 +187,132 @@ const applyBackendErrors = (error) => {
   errors.value = normalized
 }
 
-const fillFromProfile = () => {
-  const profile = profileStore.profile || {}
+const validateForm = () => {
+  const nextErrors = {}
 
-  if (!holderFirstName.value) {
-    holderFirstName.value = profile.name || ''
+  generalError.value = ''
+
+  if (!amount.value || Number(amount.value) <= 0) {
+    nextErrors.amount = t('Please select a gift card value.')
   }
 
-  if (!holderLastName.value) {
-    holderLastName.value = profile.surname || ''
+  if (!holderFirstName.value.trim()) {
+    nextErrors.holder_first_name = t('First name is required.')
   }
 
-  if (!holderEmail.value) {
-    holderEmail.value = profile.email || ''
+  if (!holderLastName.value.trim()) {
+    nextErrors.holder_last_name = t('Last name is required.')
   }
 
-  if (!holderPhone.value) {
-    holderPhone.value = normalizePhone(profile.phone || '')
+  if (!holderEmail.value.trim()) {
+    nextErrors.holder_email = t('Email is required.')
+  }
+
+  if (!holderPhone.value.trim()) {
+    nextErrors.holder_phone = t('Phone is required.')
   }
 
   if (!holderPhoneCountry.value) {
-    const profilePhoneCountry = String(profile.phone_country || '').toUpperCase()
+    nextErrors.holder_phone_country = t('Phone country is required.')
+  }
 
-    if (countries.value.some((country) => country.iso === profilePhoneCountry)) {
-      holderPhoneCountry.value = profilePhoneCountry
+  if (!holderCountry.value) {
+    nextErrors.holder_country = t('Country is required.')
+  }
+
+  if (!holderCity.value.trim()) {
+    nextErrors.holder_city = t('City is required.')
+  }
+
+  if (!holderAddress.value.trim()) {
+    nextErrors.holder_address = t('Address is required.')
+  }
+
+  if (!holderZip.value.trim()) {
+    nextErrors.holder_zip = t('Post code is required.')
+  }
+
+  if (!termsAccepted.value) {
+    termsError.value = t('You must accept the Terms of Service.')
+  } else {
+    termsError.value = ''
+  }
+
+  errors.value = nextErrors
+
+  return Object.keys(nextErrors).length === 0 && termsAccepted.value
+}
+
+const fillPrefillData = () => {
+  if (isPrefillReady.value) {
+    return
+  }
+
+  const values = prefillStore.initialize(profileStore.profile || {})
+
+  if (!holderFirstName.value) {
+    holderFirstName.value = values.firstName
+  }
+
+  if (!holderLastName.value) {
+    holderLastName.value = values.lastName
+  }
+
+  if (!holderEmail.value) {
+    holderEmail.value = values.email
+  }
+
+  if (!holderPhone.value) {
+    holderPhone.value = values.phone
+  }
+
+  if (!holderPhoneCountry.value) {
+    const value = values.phoneCountry
+
+    if (value && countries.value.some((country) => country.iso === value)) {
+      holderPhoneCountry.value = value
     }
   }
 
   if (!holderCountry.value) {
-    const profileCountry = String(
-      profile.country?.iso || profile.country_iso || profile.country || '',
-    ).toUpperCase()
+    const value = values.country
 
-    if (countries.value.some((country) => country.iso === profileCountry)) {
-      holderCountry.value = profileCountry
+    if (value && countries.value.some((country) => country.iso === value)) {
+      holderCountry.value = value
     }
   }
 
   if (!holderCity.value) {
-    holderCity.value = profile.city || ''
+    holderCity.value = values.city
   }
 
   if (!holderAddress.value) {
-    holderAddress.value = profile.address || ''
+    holderAddress.value = values.address
   }
 
   if (!holderZip.value) {
-    holderZip.value = profile.zip || ''
+    holderZip.value = values.zip
   }
+
+  isPrefillReady.value = true
+}
+
+const savePrefillData = () => {
+  if (!isPrefillReady.value) {
+    return
+  }
+
+  prefillStore.setData({
+    firstName: holderFirstName.value,
+    lastName: holderLastName.value,
+    email: holderEmail.value,
+    phone: holderPhone.value,
+    phoneCountry: holderPhoneCountry.value,
+    country: holderCountry.value,
+    city: holderCity.value,
+    address: holderAddress.value,
+    zip: holderZip.value,
+  })
 }
 
 const fetchPopularProducts = async () => {
@@ -321,46 +359,44 @@ const submitGiftCard = async () => {
     return
   }
 
-  if (!canSubmit.value || isSubmitting.value) {
+  if (isSubmitting.value) {
+    return
+  }
+
+  if (!validateForm()) {
     return
   }
 
   isSubmitting.value = true
-
-  errors.value = {}
   generalError.value = ''
-  successMessage.value = ''
 
-  const email =
-    deliveryType.value === 'friend' ? recipientEmail.value.trim() : holderEmail.value.trim()
+  savePrefillData()
 
   const payload = {
     amount: Number(amount.value),
     quantity: Number(quantity.value),
-
     holder_first_name: holderFirstName.value.trim(),
     holder_last_name: holderLastName.value.trim(),
-    holder_email: email,
-
+    holder_email: holderEmail.value.trim(),
     holder_phone: Number(normalizePhone(holderPhone.value)),
     holder_phone_country: holderPhoneCountry.value,
-
     holder_country: holderCountry.value,
     holder_city: holderCity.value.trim(),
     holder_address: holderAddress.value.trim(),
     holder_zip: holderZip.value.trim(),
-
     currency: currStore.currency?.code || undefined,
   }
 
   try {
     const response = await axios.post('gift-cards', payload)
 
-    successMessage.value = t('Success')
-
     if (response.data?.payment_link) {
       window.location.href = response.data.payment_link
+
+      return
     }
+
+    generalError.value = t('Payment link was not returned. Please try again.')
   } catch (error) {
     applyBackendErrors(error)
   } finally {
@@ -368,18 +404,11 @@ const submitGiftCard = async () => {
   }
 }
 
-const handleAddToCart = () => {
-  if (!authStore.isAuth) {
-    loginModalStore.openModal()
-    return
+watch(termsAccepted, (value) => {
+  if (value) {
+    clearTermsError()
   }
-
-  if (!canSubmit.value) {
-    return
-  }
-
-  generalError.value = t('Gift card cart endpoint is not connected yet.')
-}
+})
 
 watch(
   () => currStore.currency?.code,
@@ -398,11 +427,32 @@ watch(
 watch(
   [() => profileStore.profile, () => countries.value.length],
   () => {
-    fillFromProfile()
+    if (!countries.value.length) {
+      return
+    }
+
+    fillPrefillData()
   },
   {
     immediate: true,
     deep: true,
+  },
+)
+
+watch(
+  [
+    holderFirstName,
+    holderLastName,
+    holderEmail,
+    holderPhone,
+    holderPhoneCountry,
+    holderCountry,
+    holderCity,
+    holderAddress,
+    holderZip,
+  ],
+  () => {
+    savePrefillData()
   },
 )
 </script>
@@ -419,9 +469,16 @@ watch(
       <div class="gift-page__main">
         <div class="gift-page__left">
           <div class="gift-card-preview">
-            <img src="@/assets/img/gift-card-bg.jpg" alt="" class="gift-card-preview__image" />
-
-            <div class="gift-card-preview__overlay"></div>
+            <img
+              src="@/assets/img/gift-card-bg.jpg"
+              alt=""
+              class="gift-card-preview__image gift-card-preview__image_desk"
+            />
+            <img
+              src="@/assets/img/gift-card-bg-mob.jpg"
+              alt=""
+              class="gift-card-preview__image gift-card-preview__image_mob"
+            />
 
             <div class="gift-card-preview__content">
               <div class="gift-card-preview__brand">
@@ -504,49 +561,23 @@ watch(
                 {{ shortAmount(value) }}
               </button>
             </div>
-          </div>
 
-          <div class="gift-form__section">
-            <div class="gift-form__field-label">
-              <span>*</span>
-              {{ $t('Deliver to') }}
-            </div>
-
-            <div class="gift-form__delivery">
-              <button
-                type="button"
-                class="gift-form__delivery-button"
-                :class="{
-                  active: deliveryType === 'friend',
-                }"
-                @click="deliveryType = 'friend'"
-              >
-                {{ $t("A friend's email") }}
-              </button>
-
-              <button
-                type="button"
-                class="gift-form__delivery-button"
-                :class="{
-                  active: deliveryType === 'balance',
-                }"
-                @click="deliveryType = 'balance'"
-              >
-                {{ $t('My balance') }}
-              </button>
+            <div v-if="errors.amount" class="gift-form__field-error">
+              {{ errors.amount }}
             </div>
           </div>
 
-          <div v-if="deliveryType === 'friend'" class="gift-form__fields">
+          <div class="gift-form__fields">
             <label class="gift-form__field">
               <span class="gift-form__input-label">
                 {{ $t('Recipient email') }}
               </span>
 
               <BaseInput
-                v-model="recipientEmail"
+                v-model="holderEmail"
                 type="email"
-                placeholder="friend@example.com"
+                autocomplete="email"
+                :placeholder="$t('email@example.com')"
                 :error="errors.holder_email"
                 @update:model-value="clearError('holder_email')"
               />
@@ -598,32 +629,17 @@ watch(
                 />
               </label>
 
-              <label class="gift-form__field gift-form__field_full">
-                <span class="gift-form__input-label">
-                  {{ $t('Email') }}
-                </span>
-
-                <BaseInput
-                  v-model="holderEmail"
-                  type="email"
-                  autocomplete="email"
-                  :placeholder="$t('Email')"
-                  :error="errors.holder_email"
-                  @update:model-value="clearError('holder_email')"
-                />
-              </label>
-
               <label class="gift-form__field">
                 <span class="gift-form__input-label">
                   {{ $t('Phone country') }}
                 </span>
 
                 <BaseSelect
-                  v-model="holderCountry"
-                  :options="countryOptions"
+                  v-model="holderPhoneCountry"
+                  :options="phoneCountryOptions"
                   :placeholder="$t('Select country')"
                   :error="errors.holder_phone_country"
-                  @change="handleCountryChange"
+                  @change="handlePhoneCountryChange"
                 />
               </label>
 
@@ -658,11 +674,8 @@ watch(
                   v-model="holderCountry"
                   :options="countryOptions"
                   :placeholder="$t('Select country')"
-                  :class="{
-                    error: errors.holder_country,
-                  }"
-                  @change="handleCountryChange"
                   :error="errors.holder_country"
+                  @change="handleCountryChange"
                 />
               </label>
 
@@ -721,47 +734,25 @@ watch(
               </strong>
             </div>
 
-            <p class="gift-form__terms">
-              {{ $t('By continuing you accept our') }}
+            <BaseCheckbox
+              v-model="termsAccepted"
+              terms
+              :error="termsError"
+              @update:model-value="clearTermsError"
+            />
 
-              <RouterLink to="/static/terms-and-conditions">
-                {{ $t('Terms & Conditions') }}
-              </RouterLink>
-
-              {{ $t('and') }}
-
-              <RouterLink to="/static/privacy-policy"> {{ $t('Privacy Notice') }} </RouterLink>.
-            </p>
-
-            <div class="gift-form__actions">
-              <BaseButton
-                type="submit"
-                variant="secondary"
-                class="gift-form__buy"
-                :disabled="!canSubmit || isSubmitting"
-              >
-                {{ $t('Buy from balance') }}
-              </BaseButton>
-
-              <BaseButton
-                type="button"
-                class="gift-form__cart"
-                :disabled="!canSubmit || isSubmitting"
-                @click="handleAddToCart"
-              >
-                {{ $t('Add to cart') }}
-              </BaseButton>
-            </div>
+            <BaseButton
+              type="submit"
+              class="gift-form__submit"
+              variant="secondary"
+              :disabled="isSubmitting"
+            >
+              {{ isSubmitting ? $t('Processing...') : $t('Buy gift card') }}
+            </BaseButton>
 
             <Transition>
               <div v-if="generalError" class="gift-form__message error">
                 {{ generalError }}
-              </div>
-            </Transition>
-
-            <Transition>
-              <div v-if="successMessage" class="gift-form__message success">
-                {{ successMessage }}
               </div>
             </Transition>
           </div>
@@ -820,13 +811,10 @@ watch(
 
   &__main {
     display: grid;
-
     grid-template-columns:
       minmax(0, 1.2fr)
       minmax(420px, 1fr);
-
-    @include adaptiveValue('gap', 56, 28);
-
+    @include adaptiveValue('gap', 56, 0);
     align-items: start;
 
     @media (max-width: $md3) {
@@ -840,33 +828,27 @@ watch(
 
   &__description {
     max-width: 720px;
-
     margin: 0;
-
     color: var(--bg-eight-color);
-
-    @include adaptiveValue('font-size', 15, 13);
-
-    @include adaptiveValue('line-height', 27, 22);
+    @include adaptiveValue('font-size', 16, 14);
+    @include adaptiveValue('line-height', 28.8, 22);
 
     &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 30, 20);
+      @include adaptiveValue('margin-bottom', 32, 20);
     }
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
   &__perks {
     display: grid;
-
     grid-template-columns: repeat(3, minmax(0, 1fr));
-
     @include adaptiveValue('gap', 20, 12);
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
@@ -874,135 +856,96 @@ watch(
     @include adaptiveValue('margin-top', 96, 40);
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 }
 
 .gift-card-preview {
   position: relative;
-
   width: 100%;
-
-  @include adaptiveValue('height', 280, 180);
-
+  @include adaptiveValue('height', 284, 202);
   overflow: hidden;
 
-  border: 2px solid var(--hint-primary-color);
-
-  @include adaptiveValue('border-radius', 18, 12);
-
+  border: 2px solid var(--accent-soft-color);
+  border-radius: 14px;
   background-color: var(--bg-primary-color);
 
   &:not(:last-child) {
-    @include adaptiveValue('margin-bottom', 30, 18);
+    @include adaptiveValue('margin-bottom', 31, 22);
   }
 
   &__image {
     position: absolute;
-    inset: 0;
-
     width: 100%;
     height: 100%;
-
+    top: 0;
+    left: 0;
     object-fit: cover;
-
-    opacity: 0.42;
-  }
-
-  &__overlay {
-    position: absolute;
-    inset: 0;
-
-    background: linear-gradient(
-      105deg,
-      rgba(255, 255, 255, 0.97) 5%,
-      rgba(255, 255, 255, 0.76) 58%,
-      rgba(255, 255, 255, 0.28) 100%
-    );
-
-    @media (max-width: $md8) {
-      background: linear-gradient(
-        160deg,
-        rgba(255, 255, 255, 0.72) 0%,
-        rgba(255, 255, 255, 0.97) 100%
-      );
+    &_desk {
+      @media (max-width: $md8) {
+        @include hide-item;
+      }
+    }
+    &_mob {
+      @media (min-width: $md8) {
+        @include hide-item;
+      }
     }
   }
 
   &__content {
     position: relative;
-
     z-index: 2;
-
     height: 100%;
-
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-
     @include adaptiveValue('padding-top', 40, 20);
-
     @include adaptiveValue('padding-right', 44, 20);
-
     @include adaptiveValue('padding-bottom', 40, 20);
-
     @include adaptiveValue('padding-left', 44, 20);
   }
 
   &__brand {
     display: flex;
-
     align-items: center;
-
     @include adaptiveValue('gap', 13, 8);
   }
 
   &__brand-icon {
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     @include adaptiveValue('width', 25, 18);
-
     @include adaptiveValue('height', 25, 18);
-
-    color: var(--hint-primary-color);
-
-    border: 2px solid var(--hint-primary-color);
-
-    border-radius: 7px;
   }
 
   &__brand-name {
-    color: var(--primary-color);
-
     @include adaptiveValue('font-size', 19, 15);
-
+    @include adaptiveValue('line-height', 26, 20);
     @include adaptiveValue('letter-spacing', 2.6, 2);
+    font-weight: 300;
+    color: var(--seconday-color);
 
     strong {
-      font-weight: 700;
+      font-weight: 600;
+      color: var(--primary-color);
     }
   }
 
   &__bottom {
     display: flex;
-
     align-items: flex-end;
     justify-content: space-between;
-
     gap: 20px;
   }
 
   &__label {
     color: var(--seconday-color);
-
     @include adaptiveValue('font-size', 11, 10);
-
     @include adaptiveValue('letter-spacing', 2.2, 2);
-
+    @include adaptiveValue('line-height', 15, 14);
     text-transform: uppercase;
 
     &:not(:last-child) {
@@ -1012,75 +955,53 @@ watch(
 
   &__value {
     color: var(--primary-color);
-
     font-family: var(--font-gabarito);
-
     font-weight: 900;
-
     @include adaptiveValue('font-size', 56, 38);
-
     line-height: 1;
-
     font-variant-numeric: tabular-nums;
   }
 
   &__code {
     color: var(--seconday-color);
-
     font-size: 12px;
-
     letter-spacing: 1.8px;
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 }
 
 .gift-perk {
   display: flex;
-
   flex-direction: column;
-
   @include adaptiveValue('gap', 10, 8);
-
   border: 2px solid var(--border-primary-color);
-
   border-radius: 14px;
-
   background-color: var(--bg-secondary-color);
-
   @include adaptiveValue('padding-top', 26, 18);
-
   @include adaptiveValue('padding-right', 28, 18);
-
   @include adaptiveValue('padding-bottom', 26, 18);
-
   @include adaptiveValue('padding-left', 28, 18);
 
   &__kicker {
     color: var(--hint-primary-color);
-
     font-size: 11px;
     line-height: 15px;
-
     letter-spacing: 2.2px;
-
     text-transform: uppercase;
   }
 
   &__title {
     color: var(--primary-color);
-
     font-size: 15px;
     line-height: 21px;
-
     font-weight: 500;
   }
 
   &__text {
     color: var(--seconday-color);
-
     font-size: 12px;
     line-height: 20px;
   }
@@ -1088,64 +1009,45 @@ watch(
 
 .gift-form {
   min-width: 0;
-
   display: flex;
   flex-direction: column;
-
   @include adaptiveValue('gap', 28, 18);
-
   border: 2px solid var(--border-primary-color);
-
-  @include adaptiveValue('border-radius', 14, 10);
-
+  border-radius: 14px;
   background-color: var(--bg-secondary-color);
-
-  @include adaptiveValue('padding-top', 36, 20);
-
-  @include adaptiveValue('padding-right', 40, 16);
-
-  @include adaptiveValue('padding-bottom', 40, 20);
-
-  @include adaptiveValue('padding-left', 40, 16);
+  @include adaptiveValue('padding-top', 38, 20);
+  @include adaptiveValue('padding-right', 42, 16);
+  @include adaptiveValue('padding-bottom', 38, 20);
+  @include adaptiveValue('padding-left', 42, 16);
 
   @media (max-width: $md3) {
     border: none;
-
-    padding-left: 0;
-    padding-right: 0;
-
+    padding: 0px;
     background-color: transparent;
   }
 
   &__title {
     margin: 0;
-
     color: var(--primary-color);
-
     font-family: var(--font-gabarito);
-
     font-weight: 900;
-
     @include adaptiveValue('font-size', 26, 20);
-
     @include adaptiveValue('line-height', 31, 25);
+    @include adaptiveValue('  letter-spacing', -0.52, 0);
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
   &__section {
     display: flex;
-
     flex-direction: column;
-
     @include adaptiveValue('gap', 12, 10);
   }
 
   &__field-label {
     color: var(--seconday-color);
-
     @include adaptiveValue('font-size', 13, 12);
 
     span {
@@ -1153,40 +1055,34 @@ watch(
     }
   }
 
+  &__field-error {
+    color: var(--error-color);
+    font-size: 14px;
+    line-height: 16px;
+    font-weight: 500;
+  }
+
   &__values {
     display: grid;
-
     grid-template-columns: repeat(3, minmax(0, 1fr));
-
     @include adaptiveValue('gap', 10, 8);
   }
 
   &__value {
     width: 100%;
-
-    @include adaptiveValue('height', 54, 48);
-
+    @include adaptiveValue('height', 58, 48);
     display: flex;
-
     align-items: center;
     justify-content: center;
-
-    border: 2px solid var(--primary-color);
-
+    border: 2px solid var(--border-fourth-color);
     border-radius: 10px;
-
     background-color: transparent;
-
     color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 15, 13);
-
+    @include adaptiveValue('font-size', 15, 14);
+    @include adaptiveValue('line-height', 22, 19);
     font-family: inherit;
-
     font-weight: 600;
-
     cursor: pointer;
-
     transition:
       color 0.3s ease,
       border-color 0.3s ease,
@@ -1194,105 +1090,42 @@ watch(
 
     &.active {
       color: var(--hint-primary-color);
-
       border-color: var(--hint-primary-color);
-
       background-color: var(--bg-secondary-color);
     }
 
     @media (any-hover: hover) {
       &:hover {
         color: var(--hint-primary-color);
-
         border-color: var(--hint-primary-color);
       }
     }
   }
 
-  &__delivery {
-    display: grid;
-
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    gap: 6px;
-
-    padding: 5px;
-
-    border: 2px solid var(--border-primary-color);
-
-    border-radius: 10px;
-
-    background-color: var(--bg-primary-color);
-  }
-
-  &__delivery-button {
-    min-width: 0;
-
-    border: none;
-
-    border-radius: 8px;
-
-    background-color: transparent;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('padding-top', 12, 11);
-
-    @include adaptiveValue('padding-bottom', 12, 11);
-
-    @include adaptiveValue('font-size', 13, 12);
-
-    font-family: inherit;
-
-    cursor: pointer;
-
-    transition:
-      color 0.3s ease,
-      background-color 0.3s ease;
-
-    &.active {
-      color: var(--light-color);
-
-      background-color: var(--hint-primary-color);
-
-      font-weight: 600;
-    }
-  }
-
   &__fields {
     display: flex;
-
     flex-direction: column;
-
     @include adaptiveValue('gap', 20, 16);
   }
 
   &__holder {
     display: flex;
-
     flex-direction: column;
-
     @include adaptiveValue('gap', 16, 12);
   }
 
   &__holder-title {
     color: var(--primary-color);
-
     font-family: var(--font-gabarito);
-
     @include adaptiveValue('font-size', 18, 16);
-
     line-height: 1.3;
-
     font-weight: 700;
   }
 
   &__holder-grid {
     display: grid;
-
     grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    @include adaptiveValue('gap', 16, 12);
+    @include adaptiveValue('gap', 20, 15);
 
     @media (max-width: $md8) {
       grid-template-columns: 1fr;
@@ -1301,9 +1134,7 @@ watch(
 
   &__field {
     display: flex;
-
     flex-direction: column;
-
     gap: 9px;
 
     &_full {
@@ -1312,146 +1143,71 @@ watch(
 
     &_message {
       @media (max-width: $md8) {
-        display: none;
+        @include hide-item;
       }
     }
   }
 
   &__input-label {
     color: var(--seconday-color);
-
     @include adaptiveValue('font-size', 12, 11);
-
     @include adaptiveValue('letter-spacing', 1.44, 1.32);
-
     text-transform: uppercase;
   }
 
   &__phone-prefix {
     color: var(--primary-color);
-
     font-size: 14px;
     line-height: 18px;
-
     font-weight: 600;
-
     white-space: nowrap;
   }
 
   &__checkout {
     display: flex;
-
     flex-direction: column;
-
     @include adaptiveValue('gap', 18, 14);
-
     @include adaptiveValue('padding-top', 22, 16);
-
     border-top: 2px solid var(--border-primary-color);
 
     @media (max-width: $md8) {
       border-top: none;
-
       padding-top: 0;
     }
   }
 
   &__total {
     display: flex;
-
     align-items: flex-end;
     justify-content: space-between;
-
     gap: 20px;
-
-    @media (max-width: $md8) {
-      display: none;
-    }
 
     span {
       color: var(--primary-color);
-
       font-size: 14px;
     }
 
     strong {
       color: var(--primary-color);
-
       font-family: var(--font-gabarito);
-
       font-weight: 900;
-
       @include adaptiveValue('font-size', 34, 28);
-
       line-height: 1;
     }
   }
 
-  &__terms {
-    margin: 0;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 12, 11);
-
-    @include adaptiveValue('line-height', 20, 18);
-
-    a {
-      color: var(--hint-primary-color);
-
-      transition: opacity 0.3s ease;
-
-      @media (any-hover: hover) {
-        &:hover {
-          opacity: 0.7;
-        }
-      }
-    }
-  }
-
-  &__actions {
-    display: grid;
-
-    grid-template-columns:
-      minmax(0, 1fr)
-      minmax(140px, auto);
-
-    @include adaptiveValue('gap', 14, 10);
-
-    @media (max-width: $md8) {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  &__buy {
+  &__submit {
     width: 100%;
-  }
-
-  &__cart {
-    min-width: 140px;
-
-    @media (max-width: $md8) {
-      width: 100%;
-    }
   }
 
   &__message {
     padding: 10px 12px;
-
     border-radius: 8px;
-
     font-size: 13px;
 
     &.error {
       color: var(--error-color);
-
       background-color: var(--error-bg-color);
-    }
-
-    &.success {
-      color: var(--success-color);
-
-      background-color: var(--bg-sixth-color);
     }
   }
 }
@@ -1459,9 +1215,7 @@ watch(
 .recommended {
   &__top {
     display: flex;
-
     align-items: baseline;
-
     gap: 28px;
 
     &:not(:last-child) {
@@ -1475,35 +1229,28 @@ watch(
 
   &__line {
     flex: 1 1 auto;
-
     height: 1px;
-
     background: linear-gradient(to right, var(--border-primary-color), transparent);
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
   &__link {
     flex: 0 0 auto;
-
     color: var(--hint-primary-color);
-
     font-size: 13px;
-
     font-weight: 600;
 
     @media (max-width: $md8) {
-      display: none;
+      @include hide-item;
     }
   }
 
   &__list {
     display: grid;
-
     grid-template-columns: repeat(5, minmax(0, 1fr));
-
     gap: 20px;
 
     @media (max-width: $md2) {
@@ -1512,7 +1259,6 @@ watch(
 
     @media (max-width: $md3) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-
       gap: 12px;
     }
   }
