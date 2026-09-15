@@ -50,3 +50,53 @@ export const EmptyIcon = `
             <path d="M8.5 11H13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
 `
+
+export const EyeIcon = `
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path
+    d="M2.5 12C4.7 7.8 8 5.5 12 5.5C16 5.5 19.3 7.8 21.5 12C19.3 16.2 16 18.5 12 18.5C8 18.5 4.7 16.2 2.5 12Z"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle
+    cx="12"
+    cy="12"
+    r="3"
+    stroke="currentColor"
+    stroke-width="2"
+  />
+</svg>
+`
+
+export const EyeCrossedIcon = `
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path
+    d="M3 3L21 21"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M10.6 5.6C11.05 5.53 11.52 5.5 12 5.5C16 5.5 19.3 7.8 21.5 12C20.8 13.33 19.98 14.46 19.04 15.39"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M16.4 17.4C15.1 18.13 13.63 18.5 12 18.5C8 18.5 4.7 16.2 2.5 12C3.33 10.42 4.32 9.12 5.46 8.1"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M9.88 9.88C9.34 10.42 9 11.17 9 12C9 13.66 10.34 15 12 15C12.83 15 13.58 14.66 14.12 14.12"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+</svg>
+`
