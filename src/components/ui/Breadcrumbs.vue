@@ -19,17 +19,28 @@ const props = defineProps({
 })
 
 const breadcrumbsClasses = computed(() => ['breadcrumbs', props.class])
+
+const decodeHtmlEntities = (value) => {
+  if (!value) {
+    return ''
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+
+  return textarea.value
+}
 </script>
 
 <template>
   <div :class="breadcrumbsClasses" v-bind="$attrs">
     <template v-for="(item, index) in items" :key="`${item.title}-${index}`">
       <RouterLink v-if="item.link" :to="item.link" class="breadcrumbs__link">
-        {{ item.title }}
+        {{ decodeHtmlEntities(item.title) }}
       </RouterLink>
 
       <span v-else class="breadcrumbs__current">
-        {{ item.title }}
+        {{ decodeHtmlEntities(item.title) }}
       </span>
 
       <span v-if="index < items.length - 1" class="breadcrumbs__separator"> / </span>

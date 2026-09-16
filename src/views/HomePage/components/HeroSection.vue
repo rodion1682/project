@@ -6,9 +6,20 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 import { useCurrStore } from '@/stores/currencies'
 import { usePopularStore } from '@/stores/popular'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const popularStore = usePopularStore()
 const currStore = useCurrStore()
+
+const goToCatalog = () => {
+  router.push({ path: '/products' })
+}
+
+const goToShop = () => {
+  router.push({ path: '/products/all/all' })
+}
 
 const getProductLink = (product) => {
   const category = product?.categories?.find((item) => item.parent !== null)
@@ -54,10 +65,16 @@ watch(
         }}
       </div>
       <div class="hero__actions">
-        <BaseButton class="hero__action hero__action_shop">{{ $t('Shop now') }}</BaseButton>
-        <BaseButton class="hero__action hero__action_catalog" variant="link" icon="arrow">{{
-          $t('Browse catalog')
+        <BaseButton @click="goToShop" class="hero__action hero__action_shop">{{
+          $t('Shop now')
         }}</BaseButton>
+        <BaseButton
+          @click="goToCatalog"
+          class="hero__action hero__action_catalog"
+          variant="link"
+          icon="arrow"
+          >{{ $t('Browse catalog') }}</BaseButton
+        >
       </div>
       <div class="hero__bottom">
         <div class="hero__items">

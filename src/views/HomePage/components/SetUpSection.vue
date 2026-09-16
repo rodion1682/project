@@ -2,15 +2,20 @@
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRegModalStore } from '@/stores/regModal'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 
-const router = useRoute()
+const router = useRouter()
 
 const authStore = useAuthStore()
 const regModalStore = useRegModalStore()
 
 const openRegModal = () => {
-  regModalStore.openModal
+  router.push({
+    name: 'auth',
+    query: {
+      type: 'signup',
+    },
+  })
 }
 
 const topUpBalance = () => {

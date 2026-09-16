@@ -490,11 +490,14 @@ onBeforeUnmount(() => {
   }
 
   &__platform {
-    color: var(--seconday-color);
+    color: var(--seconday-color) !important;
   }
 
   &__category {
     color: var(--primary-color);
+    &::before {
+      content: '- ';
+    }
   }
 
   &__toolbar {

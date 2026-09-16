@@ -40,6 +40,17 @@ const isFavorite = computed(() => {
   return wishListStore.items.some((wishItem) => Number(wishItem?.id) === Number(item.value.id))
 })
 
+const decodeHtmlEntities = (value) => {
+  if (!value) {
+    return ''
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+
+  return textarea.value
+}
+
 const getProductLink = (product) => {
   if (!product || !Array.isArray(product.categories)) {
     return '/products'
@@ -110,7 +121,7 @@ const toggleFavorite = async () => {
       </div>
 
       <div v-if="item.title" class="product-list-item__title">
-        {{ item.title }}
+        {{ decodeHtmlEntities(item.title) }}
       </div>
     </div>
 

@@ -133,7 +133,7 @@ const perks = computed(() => [
   {
     kicker: t('Any title'),
     title: t('Spend it on anything in store'),
-    text: t('Keys, DLC, in-game currency — the recipient decides, not you.'),
+    text: t('Keys, DLC, in-game currency - the recipient decides, not you.'),
   },
 ])
 
@@ -744,7 +744,7 @@ watch(
             <BaseButton
               type="submit"
               class="gift-form__submit"
-              variant="secondary"
+              variant="dark-secondary"
               :disabled="isSubmitting"
             >
               {{ isSubmitting ? $t('Processing...') : $t('Buy gift card') }}
@@ -846,7 +846,9 @@ watch(
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     @include adaptiveValue('gap', 20, 12);
-
+    @media (max-width: $md4) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     @media (max-width: $md8) {
       @include hide-item;
     }
@@ -1075,9 +1077,9 @@ watch(
     align-items: center;
     justify-content: center;
     border: 2px solid var(--border-fourth-color);
-    border-radius: 10px;
+    border-radius: 14px;
     background-color: transparent;
-    color: var(--seconday-color);
+    color: #bcc2b9;
     @include adaptiveValue('font-size', 15, 14);
     @include adaptiveValue('line-height', 22, 19);
     font-family: inherit;
@@ -1091,7 +1093,7 @@ watch(
     &.active {
       color: var(--hint-primary-color);
       border-color: var(--hint-primary-color);
-      background-color: var(--bg-secondary-color);
+      background-color: transparent;
     }
 
     @media (any-hover: hover) {
@@ -1136,6 +1138,28 @@ watch(
     display: flex;
     flex-direction: column;
     gap: 9px;
+
+    :deep(.base-select__control) {
+      @include adaptiveValue('min-height', 51, 45);
+    }
+
+    :deep(.input__content),
+    :deep(.textarea__content),
+    :deep(.base-select__control) {
+      background-color: var(--bg-primary-color);
+      &:-webkit-autofill,
+      &:-webkit-autofill:hover,
+      &:-webkit-autofill:focus,
+      &:-webkit-autofill:active {
+        -webkit-text-fill-color: var(--primary-color);
+        caret-color: var(--primary-color);
+
+        -webkit-box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
+        box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
+
+        transition: background-color 9999s ease-out 0s;
+      }
+    }
 
     &_full {
       grid-column: 1 / -1;

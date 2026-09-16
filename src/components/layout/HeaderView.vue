@@ -589,12 +589,12 @@ onBeforeUnmount(() => {
 
   &__more {
     flex: 0 0 auto;
-
+    @media (max-width: $md3) {
+      margin-right: auto;
+    }
     @media (min-width: $md5) {
       min-width: 127px;
       width: fit-content;
-
-      margin-right: auto;
     }
 
     &_mobile {

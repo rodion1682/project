@@ -221,11 +221,11 @@ onMounted(loadOrders)
 
         <RouterLink
           v-for="item in filteredOrders"
-          :key="item.id"
-          :to="`/profile/orders/${item.id}`"
+          :key="item.order_nr"
+          :to="`/profile/orders/${item.order_nr}`"
           class="profile-orders__row profile-orders__row_order"
         >
-          <span class="profile-orders__number"> #{{ item.id }} </span>
+          <span class="profile-orders__number"> #{{ item.order_nr }} </span>
 
           <span class="profile-orders__products">
             {{ getOrderProducts(item) }}
@@ -257,12 +257,12 @@ onMounted(loadOrders)
       <div class="profile-orders__mobile-list">
         <RouterLink
           v-for="item in filteredOrders"
-          :key="`mobile-${item.id}`"
-          :to="`/profile/orders/${item.id}`"
+          :key="`mobile-${item.order_nr}`"
+          :to="`/profile/orders/${item.order_nr}`"
           class="profile-orders__mobile-card"
         >
           <div class="profile-orders__mobile-head">
-            <span class="profile-orders__number"> #{{ item.id }} </span>
+            <span class="profile-orders__number"> #{{ item.order_nr }} </span>
 
             <span
               :class="[
@@ -270,7 +270,7 @@ onMounted(loadOrders)
                 `profile-orders__status_${getStatusClass(item.status)}`,
               ]"
             >
-              {{ item.status ? $t(item.status) : '—' }}
+              {{ item.status ? $t(item.status) : '' }}
             </span>
           </div>
 

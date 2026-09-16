@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { useCategoriesStore } from '@/stores/categories'
@@ -12,6 +12,8 @@ import { useStaticStore } from '@/stores/static'
 import { initDynamicAdapt } from '@/utils/dynamic_adapt.js'
 
 const { t } = useI18n()
+
+const router = useRouter()
 
 const loginModalStore = useLoginModalStore()
 const authStore = useAuthStore()
@@ -96,7 +98,13 @@ const getPlatformLink = (platform) => {
 }
 
 const openLoginModal = () => {
-  loginModalStore.openModal()
+  // loginModalStore.openModal()
+  router.push({
+    name: 'auth',
+    query: {
+      type: 'login',
+    },
+  })
 }
 
 onMounted(() => {
@@ -155,7 +163,10 @@ onMounted(() => {
         <div class="footer__column">
           <div class="footer__label">{{ $t('Help') }}</div>
           <RouterLink to="/contact-us" class="footer__link">{{ $t('Contact us') }}</RouterLink>
-          <RouterLink to="/faq" class="footer__link">{{ $t('FAQ') }}</RouterLink>
+          <RouterLink to="/contact-us" class="footer__link">{{
+            $t('How buying works')
+          }}</RouterLink>
+          <RouterLink to="/contact-us" class="footer__link">{{ $t('Refunds') }}</RouterLink>
           <a :href="supportEmailHref" class="footer__link">
             <span>
               {{ supportEmail }}
@@ -303,6 +314,7 @@ onMounted(() => {
   }
 
   &__label {
+    text-transform: uppercase;
     @include adaptiveValue('font-size', 12, 11);
     @include adaptiveValue('line-height', 12, 15);
     font-weight: 700;
@@ -316,6 +328,9 @@ onMounted(() => {
   &__link {
     display: block;
     width: 100%;
+    text-align: left;
+    background: transparent;
+
     @include adaptiveValue('padding-top', 7, 4);
     @include adaptiveValue('padding-bottom', 7, 4);
     @include adaptiveValue('font-size', 14, 13);

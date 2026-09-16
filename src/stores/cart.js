@@ -8,15 +8,18 @@ import axios from '@/plugins/axios'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    cart: false,
+    cart: null,
     error: '',
     success: '',
     balanceError: '',
+    isLoading: false,
   }),
 
   actions: {
     async getCart() {
       const currStore = useCurrStore()
+
+      this.isLoading = true
 
       try {
         const res = await axios.get('cart/contents', {
@@ -28,6 +31,12 @@ export const useCartStore = defineStore('cart', {
         this.cart = res.data
       } catch (error) {
         console.error('Failed to load cart:', error)
+
+        this.cart = {
+          products: [],
+        }
+      } finally {
+        this.isLoading = false
       }
     },
 
@@ -90,7 +99,7 @@ export const useCartStore = defineStore('cart', {
           window.location = res.data.redirect_url
         })
         .catch((err) => {
-          this.error = err.response.data.message
+          this.error = err.response?.data?.message || 'Unable to complete checkout'
 
           setTimeout(() => {
             this.error = ''
@@ -98,28 +107,32 @@ export const useCartStore = defineStore('cart', {
         })
     },
 
-    payFromBalance() {
+    async payFromBalance() {
       const profileStore = useProfileStore()
 
-      axios
-        .post('cart/purchase')
-        .then(() => {
-          this.error = ''
+      try {
+        await axios.post('cart/purchase')
 
-          router.push({
-            path: '/profile/orders',
-          })
+        this.error = ''
+        this.balanceError = ''
 
-          this.getCart()
-          profileStore.getProfile()
+        router.push({
+          path: '/profile/orders',
         })
-        .catch((err) => {
-          this.balanceError = err.response.data.message
 
-          setTimeout(() => {
-            this.balanceError = ''
-          }, 3000)
-        })
+        await this.getCart()
+        await profileStore.getProfile()
+
+        return true
+      } catch (err) {
+        this.balanceError = err.response?.data?.message || 'Unable to complete purchase'
+
+        setTimeout(() => {
+          this.balanceError = ''
+        }, 3000)
+
+        return false
+      }
     },
   },
 })

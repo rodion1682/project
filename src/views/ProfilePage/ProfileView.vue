@@ -160,6 +160,13 @@ const getNavLink = (item) => {
           >
             {{ item.title }}
           </RouterLink>
+          <button
+            type="button"
+            class="profile-page__mobile-link profile-page__mobile-link_logout"
+            @click="logoutStore.out"
+          >
+            {{ $t('Logout') }}
+          </button>
         </div>
 
         <div class="profile-page__content">
@@ -451,6 +458,10 @@ const getNavLink = (item) => {
       background-color: var(--hint-primary-color);
 
       color: var(--light-color);
+    }
+    &_logout {
+      background-color: transparent;
+      color: var(--primary-color);
     }
   }
 

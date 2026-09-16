@@ -63,7 +63,7 @@ const submit = async () => {
 
     if (!regStore.error) {
       emit('submitted')
-      
+
       await router.push('/profile/overview')
     }
   } finally {
@@ -182,7 +182,12 @@ const submit = async () => {
         </div>
       </Transition>
 
-      <BaseButton type="submit" class="signup-form__submit" :disabled="disabled || isSubmitting">
+      <BaseButton
+        type="submit"
+        variant="dark-secondary"
+        class="signup-form__submit"
+        :disabled="disabled || isSubmitting"
+      >
         {{ isSubmitting ? $t('Loading...') : $t('Create account') }}
       </BaseButton>
 
@@ -265,7 +270,7 @@ const submit = async () => {
   &__eyebrow {
     color: var(--hint-primary-color);
 
-    font-weight: 700;
+    font-weight: 400;
     text-transform: uppercase;
 
     @include adaptiveValue('font-size', 11, 10);

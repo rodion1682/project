@@ -12,6 +12,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
+import Loader from '@/components/Loader.vue'
 import { CartIcon } from '@/components/ui/icons/index.js'
 
 const { t } = useI18n()
@@ -150,8 +151,10 @@ const browseCatalog = () => {
       <h1 class="cart-page__title">
         {{ $t('Cart') }}
       </h1>
-
-      <div v-if="products.length" class="cart-page__layout">
+      <div v-if="cartStore.isLoading && !cartStore.cart" class="cart-page__loader">
+        <Loader />
+      </div>
+      <div v-else-if="products.length" class="cart-page__layout">
         <div class="cart-page__products cart-products">
           <div class="cart-products__head">
             <div class="cart-products__head-product">
@@ -159,7 +162,7 @@ const browseCatalog = () => {
             </div>
 
             <div class="cart-products__head-platform">
-              {{ $t('Platform') }} · {{ $t('Region') }}
+              {{ $t('Platform') }}
             </div>
 
             <div class="cart-products__head-price">
@@ -339,7 +342,7 @@ const browseCatalog = () => {
         </aside>
       </div>
 
-      <div v-else class="cart-page__empty">
+      <div v-else-if="!cartStore.isLoading && cartStore.cart" class="cart-page__empty">
         <div class="cart-page__empty-box">
           <SvgIcon :icon="CartIcon" class="cart-page__empty-icon" />
         </div>
@@ -374,10 +377,18 @@ const browseCatalog = () => {
   @include header-indent;
   @include adaptiveValue('padding-top', 32, 18);
   @include adaptiveValue('padding-bottom', 104, 32);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 100%;
+  width: 100%;
 
   &__container {
     width: 100%;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 100%;
+    width: 100%;
   }
 
   &__breadcrumbs {
@@ -402,6 +413,9 @@ const browseCatalog = () => {
     &:not(:last-child) {
       @include adaptiveValue('margin-bottom', 32, 18);
     }
+  }
+  &__loader {
+    margin: auto;
   }
 
   &__layout {
@@ -461,14 +475,12 @@ const browseCatalog = () => {
   }
 
   &__empty {
+    margin: auto;
     width: 100%;
 
     display: flex;
     align-items: center;
     flex-direction: column;
-
-    margin-left: auto;
-    margin-right: auto;
 
     border: 2px solid var(--border-primary-color);
     border-radius: 14px;
@@ -545,10 +557,6 @@ const browseCatalog = () => {
     }
   }
 }
-
-/* =========================================
-   CART PRODUCTS
-========================================= */
 
 .cart-products {
   min-width: 0;

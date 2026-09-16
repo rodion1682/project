@@ -30,7 +30,7 @@ defineOptions({
 })
 
 const props = defineProps({
-  variant: { type: String, default: 'primary' }, // primary | secondary | link | bordered | white | transaprent | dark-secondary
+  variant: { type: String, default: 'primary' }, // primary | secondary | link | bordered | white | transaprent | dark-secondary | blue
   active: { type: Boolean, default: false },
   class: { type: [String, Array, Object], default: '' },
   icon: { type: String, default: '' }, // more | profile | close | arrow
@@ -144,6 +144,16 @@ const buttonClasses = computed(() => [
     @media (any-hover: hover) {
       &:hover {
         color: var(--hint-primary-color);
+      }
+    }
+  }
+  &.blue {
+    background-color: var(--hint-primary-color);
+    color: var(--light-color);
+    @media (any-hover: hover) {
+      &:hover {
+        color: var(--primary-color);
+        background-color: var(--yellow-color);
       }
     }
   }

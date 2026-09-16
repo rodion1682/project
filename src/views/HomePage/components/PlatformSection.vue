@@ -95,7 +95,7 @@ const goToCatalog = () => {
         </div>
 
         <BaseButton class="platforms__catalog" variant="link" icon="arrow" @click="goToCatalog">
-          {{ $t('Browse catalog') }}
+          {{ $t('All categories ') }}
         </BaseButton>
       </div>
 

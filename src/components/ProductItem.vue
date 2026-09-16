@@ -19,6 +19,11 @@ const props = defineProps({
     type: Object,
     required: false,
   },
+  isBought: {
+    type: Boolean,
+    default: false,
+    required: false,
+  },
 })
 
 const { item } = toRefs(props)
@@ -45,6 +50,17 @@ const category = computed(() => {
 
   return item.value.categories.find((categoryItem) => categoryItem.parent !== null)
 })
+
+const decodeHtmlEntities = (value) => {
+  if (!value) {
+    return ''
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+
+  return textarea.value
+}
 
 const getProductLink = (product) => {
   if (!product || !product.categories || !product.categories.length) {
@@ -93,13 +109,14 @@ const toggleCart = async () => {
       <div v-if="category" class="product-item__categories">
         {{ $t(category.parent.title) }}
       </div>
-      <div v-if="item.title" class="product-item__title">{{ item.title }}</div>
+      <div v-if="item.title" class="product-item__title">{{ decodeHtmlEntities(item.title) }}</div>
       <div class="product-item__prices">
         <PriceFormatter size="size-21" :price="item.price" class="product-item__price" />
       </div>
       <BaseButton
+        v-if="!isBought"
         class="product-item__cart"
-        :variant="isInCart ? 'bordered' : 'primary'"
+        :variant="isInCart ? 'bordered' : 'blue'"
         :icon="isInCart ? 'close' : ''"
         :disabled="isLoading"
         @click.prevent.stop="toggleCart"

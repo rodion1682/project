@@ -154,6 +154,7 @@ onMounted(async () => {
     display: flex;
     flex: 1 1 100%;
     flex-direction: column;
+    min-height: 65vh;
   }
 
   &__loader {

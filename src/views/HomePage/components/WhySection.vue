@@ -1,10 +1,10 @@
 <script setup>
 import BaseButton from '@/components/ui/BaseButton.vue'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 
-const router = useRoute()
+const router = useRouter()
 
-const goToConcatctPage = () => {
+const goToContact = () => {
   router.push({ path: '/contact-us' })
 }
 </script>
@@ -20,7 +20,7 @@ const goToConcatctPage = () => {
           <div class="desk__text">
             {{ $t('Five reasons people come back instead of buying from the launcher store.') }}
           </div>
-          <BaseButton @click="goToConcatctPage" variant="link" icon="arrow" class="desk__link">{{
+          <BaseButton @click="goToContact" variant="link" icon="arrow" class="desk__link">{{
             $t('How buying works')
           }}</BaseButton>
         </div>
@@ -240,5 +240,4 @@ const goToConcatctPage = () => {
     }
   }
 }
-
 </style>

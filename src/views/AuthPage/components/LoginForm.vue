@@ -121,7 +121,12 @@ const submit = async () => {
         </div>
       </Transition>
 
-      <BaseButton type="submit" class="auth-form__submit" :disabled="disabled || isSubmitting">
+      <BaseButton
+        type="submit"
+        variant="dark-secondary"
+        class="auth-form__submit"
+        :disabled="disabled || isSubmitting"
+      >
         {{ isSubmitting ? $t('Loading...') : $t('Sign in') }}
       </BaseButton>
 
@@ -204,7 +209,7 @@ const submit = async () => {
   &__eyebrow {
     color: var(--hint-primary-color);
 
-    font-weight: 700;
+    font-weight: 400;
     text-transform: uppercase;
 
     @include adaptiveValue('font-size', 11, 10);

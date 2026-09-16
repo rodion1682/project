@@ -240,6 +240,17 @@ const specs = computed(() => {
   return result
 })
 
+const decodeHtmlEntities = (value) => {
+  if (!value) {
+    return ''
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+
+  return textarea.value
+}
+
 const stripLinks = (html) => {
   if (!html) return ''
 
@@ -499,7 +510,7 @@ onBeforeUnmount(() => {
             </div>
 
             <h1 class="game-info__title">
-              {{ activeGame.title }}
+              {{ decodeHtmlEntities(activeGame.title) }}
             </h1>
           </div>
 
@@ -530,7 +541,7 @@ onBeforeUnmount(() => {
 
             <div class="purchase__actions">
               <BaseButton
-                variant="secondary"
+                variant="dark-secondary"
                 class="purchase__button"
                 :disabled="isCartLoading"
                 @click="buyNow"
