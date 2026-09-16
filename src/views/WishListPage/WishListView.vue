@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { useCurrStore } from '@/stores/currencies'
@@ -19,6 +19,7 @@ import WishlistProductItem from './components/WishlistProductItem.vue'
 
 const { t } = useI18n()
 
+const route = useRoute()
 const router = useRouter()
 
 const authStore = useAuthStore()
@@ -29,15 +30,33 @@ const wishListStore = useWishListStore()
 const isLoading = ref(false)
 const isClearing = ref(false)
 
-const breadcrumbs = computed(() => [
-  {
-    title: t('Home'),
-    link: '/',
-  },
-  {
+const cameFromProfile = computed(() => {
+  const from = router.options.history.state.back
+
+  return typeof from === 'string' && from.startsWith('/profile')
+})
+
+const breadcrumbs = computed(() => {
+  const items = [
+    {
+      title: t('Home'),
+      link: '/',
+    },
+  ]
+
+  if (cameFromProfile.value) {
+    items.push({
+      title: t('Profile'),
+      link: '/profile/overview',
+    })
+  }
+
+  items.push({
     title: t('Wishlist'),
-  },
-])
+  })
+
+  return items
+})
 
 const products = computed(() => {
   return Array.isArray(wishListStore.items) ? wishListStore.items : []

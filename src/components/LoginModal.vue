@@ -50,7 +50,7 @@ const removeCyrillic = (value) => {
       <img alt="Close icon" class="close" src="@/assets/icons/close.svg" @click="close" />
       <div class="left flex flex-col justify-around items-center">
         <div class="logo flex items-center">
-          <img alt="getmikey logo" class="img" src="@/assets/img/logo.svg" />
+          <img alt="yourkeys" class="img" src="@/assets/img/logo.svg" />
         </div>
         <div class="text text-52 text-russo">
           {{ $t('Welcome back!') }}

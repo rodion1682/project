@@ -1,9 +1,9 @@
 <script setup>
-import { ref } from 'vue'
-import { useRegModalStore } from '@/stores/regModal'
 import { useLoginModalStore } from '@/stores/loginModal'
 import { useRegStore } from '@/stores/reg'
+import { useRegModalStore } from '@/stores/regModal'
 import { useStaticStore } from '@/stores/static'
+import { ref } from 'vue'
 
 const loginModalStore = useLoginModalStore()
 const regModalStore = useRegModalStore()
@@ -57,7 +57,7 @@ function close() {
 
       <div class="left flex flex-col justify-around items-center">
         <div class="logo flex items-center">
-          <img alt="getmikey logo" class="img" src="@/assets/img/logo.svg" />
+          <img alt="yourkeys" class="img" src="@/assets/img/logo.svg" />
         </div>
 
         <div class="text text-52 text-russo">
