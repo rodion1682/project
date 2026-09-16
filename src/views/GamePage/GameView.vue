@@ -9,7 +9,7 @@ import axios from '@/plugins/axios'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 import PriceFormatter from '@/components/ui/PriceFormatter.vue'
-import { FavoriteIcon } from '@/components/ui/icons'
+import { FavoriteFilledIcon, FavoriteIcon } from '@/components/ui/icons'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
 import { useAuthStore } from '@/stores/auth'
@@ -559,7 +559,10 @@ onBeforeUnmount(() => {
                 :disabled="isFavoriteLoading"
                 @click="toggleFavorite"
               >
-                <SvgIcon :icon="FavoriteIcon" class="purchase__favorite-icon" />
+                <SvgIcon
+                  :icon="isFavorite ? FavoriteFilledIcon : FavoriteIcon"
+                  class="purchase__favorite-icon"
+                />
               </button>
             </div>
 

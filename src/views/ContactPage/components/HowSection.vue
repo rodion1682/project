@@ -99,12 +99,13 @@
   }
 
   &__line {
-    min-width: 0;
+    width: 100%;
+    min-width: 40px;
     height: 1px;
 
-    flex: 1 1 auto;
+    flex: 1 1 0;
 
-    background: linear-gradient(to right, var(--border-primary-color), transparent);
+    background: linear-gradient(90deg, rgba(204, 220, 236, 1) 0%, rgba(204, 220, 236, 0) 100%);
   }
 
   &__items {

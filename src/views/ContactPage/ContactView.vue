@@ -7,6 +7,7 @@ import { useContactStore } from '@/stores/contact'
 import { useProfileStore } from '@/stores/profile'
 import { useSettingsStore } from '@/stores/settings'
 import { useStaticStore } from '@/stores/static'
+import FaqSection from './components/FaqSection.vue'
 import HowSection from './components/HowSection.vue'
 
 const { t } = useI18n()
@@ -624,6 +625,7 @@ onBeforeUnmount(() => {
               {{ requisites }}
             </div>
           </div>
+          <FaqSection class="contact-page__faq contact-page__faq_desktop" />
         </div>
 
         <div class="contact-page__form-card">
@@ -842,6 +844,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <HowSection />
+      <FaqSection class="contact-page__faq contact-page__faq_mobile" />
     </div>
   </main>
 </template>
@@ -929,6 +932,31 @@ onBeforeUnmount(() => {
   &__information {
     width: 100%;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__faq {
+    &_desktop {
+      margin-top: 24px;
+    }
+
+    &_mobile {
+      display: none;
+    }
+  }
+  @media (max-width: $md8) {
+    &__faq {
+      &_desktop {
+        display: none;
+      }
+
+      &_mobile {
+        display: block;
+
+        margin-top: 8px;
+      }
+    }
   }
 
   &__intro {
