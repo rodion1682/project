@@ -7,6 +7,7 @@ import { useProfileStore } from '@/stores/profile'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
+import Loader from '@/components/Loader.vue'
 import { CartIcon } from '@/components/ui/icons'
 
 const currStore = useCurrStore()
@@ -174,14 +175,12 @@ onMounted(loadOrders)
 
 <template>
   <div class="profile-orders">
-    <div v-if="isLoading && !orders.length" class="profile-orders__loading">
-      {{ $t('Loading...') }}
-    </div>
+    <Loader v-if="isLoading && !orders.length" class="profile-orders__loading" />
 
     <template v-else-if="orders.length">
       <div class="profile-orders__filters">
         <BaseButton
-          :variant="activeStatus === 'all' ? 'dark-secondary' : 'bordered'"
+          :variant="activeStatus === 'all' ? 'blue' : 'bordered'"
           class="profile-orders__filter"
           @click="filterHistory('all')"
         >
@@ -191,7 +190,7 @@ onMounted(loadOrders)
         <BaseButton
           v-for="status in uniqueStatuses"
           :key="status"
-          :variant="activeStatus === status ? 'dark-secondary' : 'bordered'"
+          :variant="activeStatus === status ? 'blue' : 'bordered'"
           class="profile-orders__filter"
           @click="filterHistory(status)"
         >
@@ -245,7 +244,7 @@ onMounted(loadOrders)
               `profile-orders__status_${getStatusClass(item.status)}`,
             ]"
           >
-            {{ item.status ? $t(item.status) : '—' }}
+            {{ item.status ? $t(item.status) : '' }}
           </span>
 
           <strong class="profile-orders__total">
@@ -332,18 +331,13 @@ onMounted(loadOrders)
 .profile-orders {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 100%;
 
   &__loading {
     width: 100%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('min-height', 320, 220);
-    @include adaptiveValue('font-size', 14, 13);
+    margin: auto;
   }
 
   &__filters {
@@ -361,6 +355,7 @@ onMounted(loadOrders)
   &__filter {
     width: fit-content;
     min-width: 0;
+    text-transform: capitalize;
 
     flex: 0 0 auto;
 
@@ -419,11 +414,11 @@ onMounted(loadOrders)
 
       color: var(--seconday-color);
 
-      font-size: 10px;
-      line-height: 1.4;
-      font-weight: 700;
+      font-size: 11px;
+      line-height: 15px;
+      font-weight: 400;
 
-      letter-spacing: 0.15em;
+      letter-spacing: 1.76px;
       text-transform: uppercase;
 
       span:last-child {

@@ -1143,21 +1143,23 @@ watch(
       @include adaptiveValue('min-height', 51, 45);
     }
 
-    :deep(.input__content),
-    :deep(.textarea__content),
-    :deep(.base-select__control) {
-      background-color: var(--bg-primary-color);
-      &:-webkit-autofill,
-      &:-webkit-autofill:hover,
-      &:-webkit-autofill:focus,
-      &:-webkit-autofill:active {
-        -webkit-text-fill-color: var(--primary-color);
-        caret-color: var(--primary-color);
+    @media (min-width: $md8) {
+      :deep(.input__content),
+      :deep(.textarea__content),
+      :deep(.base-select__control) {
+        background-color: var(--bg-primary-color);
+        &:-webkit-autofill,
+        &:-webkit-autofill:hover,
+        &:-webkit-autofill:focus,
+        &:-webkit-autofill:active {
+          -webkit-text-fill-color: var(--primary-color);
+          caret-color: var(--primary-color);
 
-        -webkit-box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
-        box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
+          -webkit-box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
+          box-shadow: 0 0 0 1000px (--bg-primary-color) inset;
 
-        transition: background-color 9999s ease-out 0s;
+          transition: background-color 9999s ease-out 0s;
+        }
       }
     }
 

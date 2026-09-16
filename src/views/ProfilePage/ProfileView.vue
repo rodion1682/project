@@ -228,7 +228,6 @@ const getNavLink = (item) => {
   &__layout {
     display: grid;
     grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
-    align-items: start;
 
     min-width: 0;
 
@@ -241,6 +240,7 @@ const getNavLink = (item) => {
 
   &__sidebar {
     min-width: 0;
+    align-self: self-start;
 
     display: flex;
     flex-direction: column;
@@ -468,6 +468,9 @@ const getNavLink = (item) => {
   &__content {
     width: 100%;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 100%;
   }
 
   @media (max-width: $md3) {
