@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
+import i18n from '@/i18n'
 import axios from '@/plugins/axios'
-import i18n from '@/plugins/i18n'
 
 export const useContactStore = defineStore('contact', {
   state: () => ({
@@ -30,8 +30,6 @@ export const useContactStore = defineStore('contact', {
     async submit(name, email, phone, message, topic = '') {
       this.clearMessages()
 
-      const { t } = i18n.global
-
       try {
         const response = await axios.post('contact-us', {
           name,
@@ -42,14 +40,14 @@ export const useContactStore = defineStore('contact', {
         })
 
         if (response.status === 200 && response.data?.status === 'OK') {
-          this.success = t('Your message has been sent successfully.')
+          this.success = i18n.global.t('Your message has been sent successfully.')
 
           this.clearSuccessAfterDelay()
 
           return true
         }
 
-        this.error = t('Something went wrong. Please try again.')
+        this.error = i18n.global.t('Something went wrong. Please try again.')
 
         this.clearErrorAfterDelay()
 
@@ -57,7 +55,9 @@ export const useContactStore = defineStore('contact', {
       } catch (err) {
         const serverMessage = err?.response?.data?.message || err?.response?.data?.error
 
-        this.error = serverMessage ? t(serverMessage) : t('Something went wrong. Please try again.')
+        this.error = serverMessage
+          ? i18n.global.t(serverMessage)
+          : i18n.global.t('Something went wrong. Please try again.')
 
         this.clearErrorAfterDelay()
 

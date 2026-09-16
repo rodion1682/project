@@ -1,23 +1,20 @@
 <script setup>
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '@/stores/auth'
 import { useContactStore } from '@/stores/contact'
 import { useProfileStore } from '@/stores/profile'
 import { useSettingsStore } from '@/stores/settings'
-
-import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
-import BaseInput from '@/components/ui/BaseInput.vue'
-import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import { useStaticStore } from '@/stores/static'
 
 const { t } = useI18n()
 
 const authStore = useAuthStore()
+const contactStore = useContactStore()
 const profileStore = useProfileStore()
 const settingsStore = useSettingsStore()
-const contactStore = useContactStore()
+const staticStore = useStaticStore()
 
 const name = ref('')
 const email = ref('')
@@ -36,6 +33,31 @@ const errors = ref({
   topic: '',
   message: '',
   terms: '',
+})
+
+/*
+|--------------------------------------------------------------------------
+| Debounced validation
+|--------------------------------------------------------------------------
+*/
+
+const VALIDATION_DELAY = 450
+
+const validationTimers = {
+  name: null,
+  email: null,
+  phone: null,
+  topic: null,
+  message: null,
+}
+
+const touched = ref({
+  name: false,
+  email: false,
+  phone: false,
+  topic: false,
+  message: false,
+  terms: false,
 })
 
 const breadcrumbs = computed(() => [
@@ -64,17 +86,29 @@ const requisites = computed(() => {
   return settingsStore?.settings?.requisites || ''
 })
 
-const canSubmit = computed(() => {
-  return (
-    name.value.trim().length >= 2 &&
-    email.value.trim() &&
-    phone.value.trim() &&
-    topic.value.trim().length >= 3 &&
-    message.value.trim().length >= 10 &&
-    terms.value &&
-    !isSubmitting.value
-  )
+const termsPage = computed(() => {
+  if (!Array.isArray(staticStore.static)) {
+    return null
+  }
+
+  return staticStore.static.find((item) => item.is_terms) || null
 })
+
+const privacyPage = computed(() => {
+  if (!Array.isArray(staticStore.static)) {
+    return null
+  }
+
+  return staticStore.static.find((item) => item.is_privacy) || null
+})
+
+const getStaticPageLink = (item) => {
+  if (!item?.title) {
+    return '#'
+  }
+
+  return `/static/${item.title.toLowerCase().replace(/ /g, '-')}`
+}
 
 const removeCyrillic = (value = '') => {
   return String(value).replace(/[А-Яа-яЁёІіЇїЄєҐґ]/g, '')
@@ -82,11 +116,7 @@ const removeCyrillic = (value = '') => {
 
 const normalizePhone = (value = '') => {
   let cleaned = removeCyrillic(String(value))
-
-  // Remove everything except digits and +
   cleaned = cleaned.replace(/[^\d+]/g, '')
-
-  // + is allowed only as the first character
   if (cleaned.includes('+')) {
     cleaned = '+' + cleaned.replace(/\+/g, '')
   }
@@ -94,21 +124,29 @@ const normalizePhone = (value = '') => {
   return cleaned
 }
 
-const isValidEmail = (value) => {
+const getNameParts = (value = '') => {
+  return String(value).trim().split(/\s+/).filter(Boolean)
+}
+
+const isValidFullName = (value = '') => {
+  const parts = getNameParts(value)
+
+  if (parts.length < 2) {
+    return false
+  }
+
+  const firstName = parts[0]
+  const surname = parts.slice(1).join(' ')
+
+  return firstName.length >= 2 && surname.length >= 2
+}
+
+const isValidEmail = (value = '') => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-const isValidPhone = (value) => {
-  // International format:
-  // must start with +
-  // 7-15 digits after +
-  return /^\+[1-9]\d{6,14}$/.test(value)
-}
-
-const getProfileName = () => {
-  const profile = profileStore.profile || {}
-
-  return [profile.name, profile.surname].filter(Boolean).join(' ').trim()
+const isValidPhone = (value = '') => {
+  return /^\+\d{7,15}$/.test(value)
 }
 
 const fillProfileData = () => {
@@ -122,12 +160,19 @@ const fillProfileData = () => {
     return
   }
 
-  name.value = getProfileName()
-  email.value = profile.email || ''
+  const fullName = [profile.name, profile.surname].filter(Boolean).join(' ').trim()
 
-  const profilePhone = profile.phone || ''
+  if (fullName) {
+    name.value = fullName
+  }
 
-  if (profilePhone) {
+  if (profile.email) {
+    email.value = profile.email
+  }
+
+  if (profile.phone) {
+    const profilePhone = String(profile.phone)
+
     phone.value = profilePhone.startsWith('+')
       ? normalizePhone(profilePhone)
       : normalizePhone(`+${profilePhone}`)
@@ -147,20 +192,60 @@ const clearErrors = () => {
   }
 }
 
+const clearValidationTimer = (field) => {
+  if (!validationTimers[field]) {
+    return
+  }
+
+  clearTimeout(validationTimers[field])
+
+  validationTimers[field] = null
+}
+
+const debounceValidation = (field, callback) => {
+  clearValidationTimer(field)
+
+  validationTimers[field] = setTimeout(() => {
+    callback()
+
+    validationTimers[field] = null
+  }, VALIDATION_DELAY)
+}
+
 const validateName = () => {
   const value = name.value.trim()
 
   if (!value) {
-    errors.value.name = t('Name is required')
+    errors.value.name = t('Name and surname are required')
+
     return false
   }
 
-  if (value.length < 2) {
+  const parts = getNameParts(value)
+
+  if (parts.length < 2) {
+    errors.value.name = t('Enter both your name and surname')
+
+    return false
+  }
+
+  const firstName = parts[0]
+  const surname = parts.slice(1).join(' ')
+
+  if (firstName.length < 2) {
     errors.value.name = t('Name must be at least 2 characters')
+
+    return false
+  }
+
+  if (surname.length < 2) {
+    errors.value.name = t('Surname must be at least 2 characters')
+
     return false
   }
 
   errors.value.name = ''
+
   return true
 }
 
@@ -169,15 +254,18 @@ const validateEmail = () => {
 
   if (!value) {
     errors.value.email = t('E-mail is required')
+
     return false
   }
 
   if (!isValidEmail(value)) {
     errors.value.email = t('Enter a valid e-mail address')
+
     return false
   }
 
   errors.value.email = ''
+
   return true
 }
 
@@ -186,20 +274,38 @@ const validatePhone = () => {
 
   if (!value) {
     errors.value.phone = t('Phone is required')
+
     return false
   }
 
   if (!value.startsWith('+')) {
     errors.value.phone = t('Phone number must start with +')
+
     return false
   }
 
-  if (!isValidPhone(value)) {
-    errors.value.phone = t('Enter a valid phone number')
+  const digits = value.slice(1)
+
+  if (!/^\d+$/.test(digits)) {
+    errors.value.phone = t('Phone number must contain only digits after +')
+
+    return false
+  }
+
+  if (digits.length < 7) {
+    errors.value.phone = t('Phone number must contain at least 7 digits')
+
+    return false
+  }
+
+  if (digits.length > 15) {
+    errors.value.phone = t('Phone number must not contain more than 15 digits')
+
     return false
   }
 
   errors.value.phone = ''
+
   return true
 }
 
@@ -208,20 +314,24 @@ const validateTopic = () => {
 
   if (!value) {
     errors.value.topic = t('Topic is required')
+
     return false
   }
 
   if (value.length < 3) {
     errors.value.topic = t('Topic must be at least 3 characters')
+
     return false
   }
 
   if (value.length > 255) {
     errors.value.topic = t('Topic must not exceed 255 characters')
+
     return false
   }
 
   errors.value.topic = ''
+
   return true
 }
 
@@ -230,29 +340,47 @@ const validateMessage = () => {
 
   if (!value) {
     errors.value.message = t('Message is required')
+
     return false
   }
 
   if (value.length < 10) {
     errors.value.message = t('Message must be at least 10 characters')
+
     return false
   }
 
   errors.value.message = ''
+
   return true
 }
 
 const validateTerms = () => {
   if (!terms.value) {
     errors.value.terms = t('You must accept the terms and privacy policy')
+
     return false
   }
 
   errors.value.terms = ''
+
   return true
 }
 
 const validate = () => {
+  Object.keys(validationTimers).forEach((field) => {
+    clearValidationTimer(field)
+  })
+
+  touched.value = {
+    name: true,
+    email: true,
+    phone: true,
+    topic: true,
+    message: true,
+    terms: true,
+  }
+
   clearErrors()
 
   const nameValid = validateName()
@@ -262,15 +390,21 @@ const validate = () => {
   const messageValid = validateMessage()
   const termsValid = validateTerms()
 
-  return (
-    nameValid &&
-    emailValid &&
-    phoneValid &&
-    topicValid &&
-    messageValid &&
-    termsValid
-  )
+  return nameValid && emailValid && phoneValid && topicValid && messageValid && termsValid
 }
+
+const canSubmit = computed(() => {
+  return (
+    isValidFullName(name.value) &&
+    isValidEmail(email.value.trim()) &&
+    isValidPhone(phone.value.trim()) &&
+    topic.value.trim().length >= 3 &&
+    topic.value.trim().length <= 255 &&
+    message.value.trim().length >= 10 &&
+    terms.value &&
+    !isSubmitting.value
+  )
+})
 
 const submit = async () => {
   if (isSubmitting.value) {
@@ -293,15 +427,12 @@ const submit = async () => {
     )
 
     if (success) {
-      // Keep profile/prefilled information:
-      // name
-      // email
-      // phone
-
-      // Only clear user-written contact data
       topic.value = ''
       message.value = ''
       terms.value = false
+      touched.value.topic = false
+      touched.value.message = false
+      touched.value.terms = false
 
       clearErrors()
     }
@@ -314,43 +445,58 @@ watchEffect(() => {
   fillProfileData()
 })
 
-watch(name, (value) => {
+watch(name, (value, previousValue) => {
   const cleaned = removeCyrillic(value)
 
   if (cleaned !== value) {
     name.value = cleaned
+
     return
   }
 
-  if (errors.value.name && cleaned.trim().length >= 2) {
-    errors.value.name = ''
+  if (!profileInitialized.value && !previousValue) {
+    return
   }
+
+  touched.value.name = true
+
+  debounceValidation('name', validateName)
 })
 
-watch(email, (value) => {
+watch(email, (value, previousValue) => {
   const cleaned = removeCyrillic(value)
 
   if (cleaned !== value) {
     email.value = cleaned
+
     return
   }
 
-  if (errors.value.email && isValidEmail(cleaned.trim())) {
-    errors.value.email = ''
+  if (!profileInitialized.value && !previousValue) {
+    return
   }
+
+  touched.value.email = true
+
+  debounceValidation('email', validateEmail)
 })
 
-watch(phone, (value) => {
+watch(phone, (value, previousValue) => {
   const cleaned = normalizePhone(value)
 
   if (cleaned !== value) {
     phone.value = cleaned
+
     return
   }
 
-  if (errors.value.phone && isValidPhone(cleaned.trim())) {
-    errors.value.phone = ''
+  if (!profileInitialized.value && !previousValue) {
+    return
   }
+
+  touched.value.phone = true
+
+  debounceValidation('phone', validatePhone)
 })
 
 watch(topic, (value) => {
@@ -358,14 +504,19 @@ watch(topic, (value) => {
 
   if (cleaned !== value) {
     topic.value = cleaned
+
     return
   }
 
-  const length = cleaned.trim().length
-
-  if (errors.value.topic && length >= 3 && length <= 255) {
+  if (!value && !touched.value.topic) {
     errors.value.topic = ''
+
+    return
   }
+
+  touched.value.topic = true
+
+  debounceValidation('topic', validateTopic)
 })
 
 watch(message, (value) => {
@@ -373,18 +524,38 @@ watch(message, (value) => {
 
   if (cleaned !== value) {
     message.value = cleaned
+
     return
   }
 
-  if (errors.value.message && cleaned.trim().length >= 10) {
+  if (!value && !touched.value.message) {
     errors.value.message = ''
+
+    return
   }
+
+  touched.value.message = true
+
+  debounceValidation('message', validateMessage)
 })
 
 watch(terms, (value) => {
   if (value) {
+    touched.value.terms = true
     errors.value.terms = ''
+
+    return
   }
+
+  if (touched.value.terms) {
+    errors.value.terms = t('You must accept the terms and privacy policy')
+  }
+})
+
+onBeforeUnmount(() => {
+  Object.keys(validationTimers).forEach((field) => {
+    clearValidationTimer(field)
+  })
 })
 </script>
 
@@ -459,166 +630,200 @@ watch(terms, (value) => {
             {{ $t('Write to us') }}
           </h2>
 
-          <form
-            class="contact-page__form"
-            novalidate
-            @submit.prevent="submit"
-          >
+          <form class="contact-page__form" novalidate @submit.prevent="submit">
             <div class="contact-page__fields">
-              <!-- NAME -->
               <div class="contact-page__field">
-                <label
-                  class="contact-page__label"
-                  for="contact-name"
-                >
+                <label class="contact-page__label" for="contact-name">
                   {{ $t('Name, Surname') }}
                 </label>
 
-                <BaseInput
+                <input
                   id="contact-name"
                   v-model="name"
-                  :error="errors.name"
+                  :class="[
+                    'contact-page__input',
+                    {
+                      'contact-page__input_error': errors.name,
+                    },
+                  ]"
+                  type="text"
                   :placeholder="$t('Name, Surname')"
                   autocomplete="name"
                   maxlength="100"
-                  @blur="validateName"
                 />
+
+                <Transition name="contact-error">
+                  <div v-if="errors.name" class="contact-page__field-error">
+                    {{ errors.name }}
+                  </div>
+                </Transition>
               </div>
 
-              <!-- EMAIL -->
               <div class="contact-page__field">
-                <label
-                  class="contact-page__label"
-                  for="contact-email"
-                >
+                <label class="contact-page__label" for="contact-email">
                   {{ $t('E-mail') }}
                 </label>
 
-                <BaseInput
+                <input
                   id="contact-email"
                   v-model="email"
+                  :class="[
+                    'contact-page__input',
+                    {
+                      'contact-page__input_error': errors.email,
+                    },
+                  ]"
                   type="email"
-                  :error="errors.email"
                   :placeholder="$t('you@example.com')"
                   autocomplete="email"
                   maxlength="255"
-                  @blur="validateEmail"
                 />
+
+                <Transition name="contact-error">
+                  <div v-if="errors.email" class="contact-page__field-error">
+                    {{ errors.email }}
+                  </div>
+                </Transition>
               </div>
 
-              <!-- PHONE -->
               <div class="contact-page__field">
-                <label
-                  class="contact-page__label"
-                  for="contact-phone"
-                >
+                <label class="contact-page__label" for="contact-phone">
                   {{ $t('Phone') }}
                 </label>
 
-                <BaseInput
+                <input
                   id="contact-phone"
                   v-model="phone"
+                  :class="[
+                    'contact-page__input',
+                    {
+                      'contact-page__input_error': errors.phone,
+                    },
+                  ]"
                   type="tel"
-                  :error="errors.phone"
                   :placeholder="$t('+441234567890')"
                   autocomplete="tel"
                   inputmode="tel"
                   maxlength="16"
-                  @blur="validatePhone"
                 />
+
+                <Transition name="contact-error">
+                  <div v-if="errors.phone" class="contact-page__field-error">
+                    {{ errors.phone }}
+                  </div>
+                </Transition>
               </div>
 
-              <!-- TOPIC -->
               <div class="contact-page__field">
-                <label
-                  class="contact-page__label"
-                  for="contact-topic"
-                >
+                <label class="contact-page__label" for="contact-topic">
                   {{ $t('Topic') }}
                 </label>
 
-                <BaseInput
+                <input
                   id="contact-topic"
                   v-model="topic"
-                  :error="errors.topic"
+                  :class="[
+                    'contact-page__input',
+                    {
+                      'contact-page__input_error': errors.topic,
+                    },
+                  ]"
+                  type="text"
                   :placeholder="$t('Topic')"
                   minlength="3"
                   maxlength="255"
-                  @blur="validateTopic"
                 />
+
+                <Transition name="contact-error">
+                  <div v-if="errors.topic" class="contact-page__field-error">
+                    {{ errors.topic }}
+                  </div>
+                </Transition>
               </div>
 
-              <!-- MESSAGE -->
               <div class="contact-page__field contact-page__field_full">
-                <label
-                  class="contact-page__label"
-                  for="contact-message"
-                >
+                <label class="contact-page__label" for="contact-message">
                   {{ $t('Message') }}
                 </label>
 
-                <div
+                <textarea
+                  id="contact-message"
+                  v-model="message"
                   :class="[
-                    'contact-page__textarea-container',
+                    'contact-page__textarea',
                     {
-                      'contact-page__textarea-container_error':
-                        errors.message,
+                      'contact-page__textarea_error': errors.message,
                     },
                   ]"
-                >
-                  <textarea
-                    id="contact-message"
-                    v-model="message"
-                    class="contact-page__textarea"
-                    minlength="10"
-                    maxlength="5000"
-                    :placeholder="
-                      $t(
-                        'Tell us what happened and include any information that may help.',
-                      )
-                    "
-                    @blur="validateMessage"
-                  />
-                </div>
+                  minlength="10"
+                  maxlength="5000"
+                  :placeholder="
+                    $t('Tell us what happened and include any information that may help.')
+                  "
+                />
 
                 <Transition name="contact-error">
-                  <div
-                    v-if="errors.message"
-                    class="contact-page__field-error"
-                  >
+                  <div v-if="errors.message" class="contact-page__field-error">
                     {{ errors.message }}
                   </div>
                 </Transition>
               </div>
             </div>
 
-            <BaseCheckbox
-              v-model="terms"
-              terms
-              :error="errors.terms"
-              class="contact-page__terms"
-            />
+            <div class="contact-page__terms">
+              <label class="contact-page__checkbox">
+                <input v-model="terms" type="checkbox" />
 
-            <BaseButton
-              type="submit"
-              class="contact-page__submit"
-              :disabled="!canSubmit"
-              variant="dark-secondary"
-            >
-              {{
-                isSubmitting
-                  ? $t('Sending...')
-                  : $t('Send message')
-              }}
-            </BaseButton>
+                <span class="contact-page__checkbox-box">
+                  <svg viewBox="0 0 12 10" fill="none" aria-hidden="true">
+                    <path
+                      d="M1 5L4.2 8L11 1"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+
+                <span class="contact-page__checkbox-text">
+                  {{ $t('I’ve read and agree with') }}
+
+                  <RouterLink
+                    v-if="termsPage"
+                    :to="getStaticPageLink(termsPage)"
+                    class="contact-page__terms-link"
+                  >
+                    {{ $t('T&Cs') }}
+                  </RouterLink>
+
+                  {{ $t('and') }}
+
+                  <RouterLink
+                    v-if="privacyPage"
+                    :to="getStaticPageLink(privacyPage)"
+                    class="contact-page__terms-link"
+                  >
+                    {{ $t('Privacy Policy') }}
+                  </RouterLink>
+                </span>
+              </label>
+
+              <Transition name="contact-error">
+                <div v-if="errors.terms" class="contact-page__field-error">
+                  {{ errors.terms }}
+                </div>
+              </Transition>
+            </div>
+
+            <button type="submit" class="contact-page__submit" :disabled="!canSubmit">
+              {{ isSubmitting ? $t('Sending...') : $t('Send message') }}
+            </button>
 
             <Transition name="contact-message">
               <div
                 v-if="contactStore.error"
-                class="
-                  contact-page__message
-                  contact-page__message_error
-                "
+                class="contact-page__message contact-page__message_error"
               >
                 {{ $t(contactStore.error) }}
               </div>
@@ -627,10 +832,7 @@ watch(terms, (value) => {
             <Transition name="contact-message">
               <div
                 v-if="contactStore.success"
-                class="
-                  contact-page__message
-                  contact-page__message_success
-                "
+                class="contact-page__message contact-page__message_success"
               >
                 {{ $t(contactStore.success) }}
               </div>
@@ -663,15 +865,36 @@ watch(terms, (value) => {
   }
 
   &__breadcrumbs {
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 32, 20);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    color: var(--seconday-color);
+
+    @include adaptiveValue('gap', 10, 7);
+    @include adaptiveValue('font-size', 14, 12);
+    @include adaptiveValue('line-height', 20, 18);
+    @include adaptiveValue('margin-bottom', 32, 20);
+
+    a {
+      color: var(--primary-color);
+
+      transition: color 0.3s ease;
+
+      @media (any-hover: hover) {
+        &:hover {
+          color: var(--hint-primary-color);
+        }
+      }
+    }
+
+    span:last-child {
+      color: var(--hint-primary-color);
     }
   }
 
   &__heading {
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 36, 22);
-    }
+    @include adaptiveValue('margin-bottom', 36, 22);
   }
 
   &__title {
@@ -872,53 +1095,24 @@ watch(terms, (value) => {
     @include adaptiveValue('margin-bottom', 8, 7);
   }
 
-  &__textarea-container {
-    width: 100%;
-
-    border: 2px solid var(--border-primary-color);
-    border-radius: 10px;
-
-    background-color: var(--bg-secondary-color);
-
-    transition: border-color 0.3s ease;
-
-    &:focus-within {
-      border-color: var(--hint-primary-color);
-    }
-
-    &_error {
-      border-color: var(--error-color);
-
-      &:focus-within {
-        border-color: var(--error-color);
-      }
-    }
-  }
-
+  &__input,
   &__textarea {
     width: 100%;
     min-width: 0;
 
-    display: block;
-
-    border: none;
+    border: 2px solid var(--border-primary-color);
     outline: none;
+    border-radius: 10px;
 
-    resize: vertical;
-
-    background-color: transparent;
+    background-color: var(--bg-secondary-color);
 
     color: var(--primary-color);
 
     font-family: var(--font-open-sans);
-    font-size: 15px;
-    line-height: 22px;
 
-    @include adaptiveValue('min-height', 160, 130);
-    @include adaptiveValue('padding-top', 14, 12);
-    @include adaptiveValue('padding-right', 18, 15);
-    @include adaptiveValue('padding-bottom', 14, 12);
-    @include adaptiveValue('padding-left', 18, 15);
+    transition:
+      border-color 0.3s ease,
+      background-color 0.3s ease;
 
     &::placeholder {
       color: var(--third-color);
@@ -927,10 +1121,43 @@ watch(terms, (value) => {
     }
 
     &:focus {
+      border-color: var(--hint-primary-color);
+
       &::placeholder {
         opacity: 0;
       }
     }
+
+    &_error {
+      border-color: var(--error-color);
+
+      &:focus {
+        border-color: var(--error-color);
+      }
+    }
+  }
+
+  &__input {
+    min-height: 50px;
+
+    padding: 0 16px;
+
+    font-size: 14px;
+  }
+
+  &__textarea {
+    display: block;
+
+    resize: vertical;
+
+    @include adaptiveValue('min-height', 160, 130);
+    @include adaptiveValue('padding-top', 14, 12);
+    @include adaptiveValue('padding-right', 18, 15);
+    @include adaptiveValue('padding-bottom', 14, 12);
+    @include adaptiveValue('padding-left', 18, 15);
+
+    font-size: 15px;
+    line-height: 22px;
   }
 
   &__field-error {
@@ -944,15 +1171,146 @@ watch(terms, (value) => {
   }
 
   &__terms {
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 22, 18);
+    @include adaptiveValue('margin-bottom', 22, 18);
+  }
+
+  &__checkbox {
+    position: relative;
+
+    display: flex;
+    align-items: flex-start;
+
+    cursor: pointer;
+
+    @include adaptiveValue('gap', 10, 8);
+
+    input {
+      position: absolute;
+
+      width: 1px;
+      height: 1px;
+
+      opacity: 0;
+      pointer-events: none;
+
+      &:checked + .contact-page__checkbox-box {
+        border-color: var(--hint-primary-color);
+
+        background-color: var(--hint-primary-color);
+
+        color: var(--bg-primary-color);
+
+        svg {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      &:focus-visible + .contact-page__checkbox-box {
+        border-color: var(--hint-primary-color);
+      }
+    }
+  }
+
+  &__checkbox-box {
+    flex: 0 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 5px;
+
+    color: var(--bg-primary-color);
+
+    transition:
+      border-color 0.3s ease,
+      background-color 0.3s ease;
+
+    @include adaptiveValue('width', 20, 18);
+    @include adaptiveValue('height', 20, 18);
+
+    svg {
+      width: 11px;
+      height: 9px;
+
+      opacity: 0;
+      transform: scale(0.7);
+
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+    }
+  }
+
+  &__checkbox-text {
+    color: var(--seconday-color);
+
+    @include adaptiveValue('font-size', 13, 12);
+    @include adaptiveValue('line-height', 20, 18);
+  }
+
+  &__terms-link {
+    color: var(--hint-primary-color);
+
+    font-weight: 600;
+
+    transition: opacity 0.3s ease;
+
+    @media (any-hover: hover) {
+      &:hover {
+        opacity: 0.7;
+      }
     }
   }
 
   &__submit {
     width: fit-content;
+    min-height: 48px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 10px;
+
+    padding: 0 24px;
+
+    background-color: var(--primary-color);
+
+    color: var(--bg-primary-color);
+
+    font-family: var(--font-open-sans);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+
+    cursor: pointer;
+
+    transition:
+      opacity 0.3s ease,
+      border-color 0.3s ease,
+      transform 0.3s ease;
 
     @include adaptiveValue('min-width', 165, 150);
+
+    &:disabled {
+      opacity: 0.45;
+
+      cursor: default;
+      pointer-events: none;
+    }
+
+    @media (any-hover: hover) {
+      &:not(:disabled):hover {
+        border-color: var(--hint-primary-color);
+
+        transform: translateY(-1px);
+      }
+    }
   }
 
   &__message {
@@ -970,21 +1328,13 @@ watch(terms, (value) => {
     &_error {
       color: var(--error-color);
 
-      background-color: color-mix(
-        in srgb,
-        var(--error-color) 10%,
-        transparent
-      );
+      background-color: color-mix(in srgb, var(--error-color) 10%, transparent);
     }
 
     &_success {
       color: var(--success-color, #1f9d55);
 
-      background-color: color-mix(
-        in srgb,
-        var(--success-color, #1f9d55) 10%,
-        transparent
-      );
+      background-color: color-mix(in srgb, var(--success-color, #1f9d55) 10%, transparent);
     }
   }
 
