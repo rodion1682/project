@@ -100,3 +100,14 @@ export const EyeCrossedIcon = `
   />
 </svg>
 `
+
+export const FailIcon = `
+ <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M7 7L17 17M17 7L7 17"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+`

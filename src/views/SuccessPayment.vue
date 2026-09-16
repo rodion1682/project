@@ -1,13 +1,13 @@
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 
 import { useSettingsStore } from '@/stores/settings'
 
-import BaseButton from '@/components/ui/BaseButton.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import { useI18n } from 'vue-i18n'
 
-const router = useRouter()
+const { t } = useI18n()
+
 const settingsStore = useSettingsStore()
 
 const supportEmail = computed(() => {
@@ -16,21 +16,13 @@ const supportEmail = computed(() => {
 
 const breadcrumbs = computed(() => [
   {
-    title: 'Home',
+    title: t('Home'),
     link: '/',
   },
   {
-    title: 'Payment successful',
+    title: t('Payment successful'),
   },
 ])
-
-const goToOrders = () => {
-  router.push('/profile/orders')
-}
-
-const goHome = () => {
-  router.push('/')
-}
 </script>
 
 <template>
@@ -51,39 +43,17 @@ const goHome = () => {
           </svg>
         </div>
 
-        <div class="success-payment__label">
-          {{ $t('Payment successful') }}
-        </div>
-
         <h1 class="success-payment__title">
           {{ $t('Thank you for your purchase!') }}
         </h1>
 
         <p class="success-payment__text">
-          {{
-            $t(
-              'Your payment was completed successfully. You can view your purchase and order details in your account.',
-            )
-          }}
-        </p>
-
-        <p v-if="supportEmail" class="success-payment__support">
           {{ $t('In case of any questions, please contact us at') }}
 
-          <a :href="`mailto:${supportEmail}`" class="success-payment__email">
+          <a v-if="supportEmail" :href="`mailto:${supportEmail}`" class="success-payment__email">
             {{ supportEmail }}
           </a>
         </p>
-
-        <div class="success-payment__actions">
-          <BaseButton class="success-payment__button" @click="goToOrders" variant="dark-secondary">
-            {{ $t('View my orders') }}
-          </BaseButton>
-
-          <BaseButton variant="bordered" class="success-payment__button" @click="goHome">
-            {{ $t('Back to home') }}
-          </BaseButton>
-        </div>
       </div>
     </div>
   </main>
@@ -120,20 +90,21 @@ const goHome = () => {
 
     display: flex;
     align-items: center;
+    justify-content: center;
     flex-direction: column;
 
     margin-left: auto;
     margin-right: auto;
 
     border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
 
     background-color: var(--bg-secondary-color);
 
     text-align: center;
 
     @include adaptiveValue('max-width', 640, 340);
-    @include adaptiveValue('border-radius', 14, 10);
-
+    @include adaptiveValue('min-height', 360, 280);
     @include adaptiveValue('padding-top', 68, 38);
     @include adaptiveValue('padding-right', 48, 18);
     @include adaptiveValue('padding-bottom', 68, 38);
@@ -154,7 +125,7 @@ const goHome = () => {
 
     @include adaptiveValue('width', 68, 50);
     @include adaptiveValue('height', 68, 50);
-    @include adaptiveValue('margin-bottom', 20, 16);
+    @include adaptiveValue('margin-bottom', 24, 18);
 
     svg {
       @include adaptiveValue('width', 31, 23);
@@ -162,19 +133,8 @@ const goHome = () => {
     }
   }
 
-  &__label {
-    color: var(--hint-primary-color);
-
-    font-weight: 700;
-    text-transform: uppercase;
-
-    @include adaptiveValue('font-size', 12, 10);
-    @include adaptiveValue('line-height', 17, 15);
-    @include adaptiveValue('letter-spacing', 1.68, 1.4);
-    @include adaptiveValue('margin-bottom', 10, 8);
-  }
-
   &__title {
+    width: 100%;
     max-width: 500px;
 
     margin-top: 0;
@@ -186,33 +146,20 @@ const goHome = () => {
     line-height: 1.15;
 
     @include adaptiveValue('font-size', 32, 24);
-    @include adaptiveValue('margin-bottom', 12, 10);
+    @include adaptiveValue('margin-bottom', 14, 10);
   }
 
   &__text {
     width: 100%;
-    max-width: 470px;
+    max-width: 480px;
 
     margin-top: 0;
+    margin-bottom: 0;
 
     color: var(--seconday-color);
 
     @include adaptiveValue('font-size', 14, 13);
     @include adaptiveValue('line-height', 22, 20);
-    @include adaptiveValue('margin-bottom', 14, 12);
-  }
-
-  &__support {
-    width: 100%;
-    max-width: 470px;
-
-    margin-top: 0;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 14, 13);
-    @include adaptiveValue('line-height', 22, 20);
-    @include adaptiveValue('margin-bottom', 28, 22);
   }
 
   &__email {
@@ -231,29 +178,9 @@ const goHome = () => {
     }
   }
 
-  &__actions {
-    width: 100%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    @include adaptiveValue('gap', 12, 8);
-  }
-
-  &__button {
-    width: fit-content;
-
-    @include adaptiveValue('min-width', 170, 145);
-  }
-
   @media (max-width: $md6) {
-    &__actions {
-      flex-direction: column;
-    }
-
-    &__button {
-      width: 100%;
+    &__content {
+      border-radius: 10px;
     }
   }
 }
