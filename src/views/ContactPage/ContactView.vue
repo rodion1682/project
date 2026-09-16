@@ -7,6 +7,7 @@ import { useContactStore } from '@/stores/contact'
 import { useProfileStore } from '@/stores/profile'
 import { useSettingsStore } from '@/stores/settings'
 import { useStaticStore } from '@/stores/static'
+import HowSection from './components/HowSection.vue'
 
 const { t } = useI18n()
 
@@ -840,6 +841,7 @@ onBeforeUnmount(() => {
           </form>
         </div>
       </div>
+      <HowSection />
     </div>
   </main>
 </template>
