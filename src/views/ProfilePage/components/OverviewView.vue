@@ -1,17 +1,21 @@
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
+import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 
 import { useProfileStore } from '@/stores/profile'
+import { useWishListStore } from '@/stores/wishlist'
 
 const { t } = useI18n()
 
 const profileStore = useProfileStore()
+const wishListStore = useWishListStore()
 
 const isSubmitting = ref(false)
+const isStatsLoading = ref(false)
 const successMessage = ref('')
 const submitError = ref('')
 
@@ -30,6 +34,69 @@ const errors = reactive({
   surname: '',
   email: '',
   phone: '',
+})
+
+const ordersCount = computed(() => {
+  return Array.isArray(profileStore.orderHistory) ? profileStore.orderHistory.length : 0
+})
+
+const wishlistCount = computed(() => {
+  return Array.isArray(wishListStore.items) ? wishListStore.items.length : 0
+})
+
+const priceDroppedCount = computed(() => {
+  if (!Array.isArray(wishListStore.items)) {
+    return 0
+  }
+
+  return wishListStore.items.filter((product) => {
+    const oldPrice = product?.old_price ?? product?.oldPrice ?? product?.price_old ?? null
+    const currentPrice = product?.price ?? null
+
+    if (oldPrice === null || currentPrice === null) {
+      return false
+    }
+
+    return Number(oldPrice) > Number(currentPrice)
+  }).length
+})
+
+const latestOrder = computed(() => {
+  if (!Array.isArray(profileStore.orderHistory) || !profileStore.orderHistory.length) {
+    return null
+  }
+
+  return [...profileStore.orderHistory].sort((a, b) => {
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })[0]
+})
+
+const latestOrderDate = computed(() => {
+  if (!latestOrder.value?.created_at) {
+    return ''
+  }
+
+  const date = new Date(latestOrder.value.created_at)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+})
+
+const balance = computed(() => {
+  const value = profileStore.profile?.balanceInCurrency
+
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  return Number(value)
 })
 
 const hasProfile = () => {
@@ -215,6 +282,21 @@ const submit = async () => {
   }
 }
 
+const loadStats = async () => {
+  isStatsLoading.value = true
+
+  try {
+    await profileStore.getOrderHistory()
+
+    try {
+      await wishListStore.getItems()
+    } catch {
+      //
+    }
+  } finally {
+    isStatsLoading.value = false
+  }
+}
 watch(
   () => profileStore.profile,
   () => {
@@ -239,6 +321,8 @@ onMounted(async () => {
   }
 
   fillForm()
+
+  await loadStats()
 })
 
 onBeforeUnmount(() => {
@@ -256,14 +340,12 @@ onBeforeUnmount(() => {
   <div class="overview">
     <form class="overview__card" @submit.prevent="submit">
       <div class="overview__header">
-        <div class="overview__header-content">
-          <h2 class="overview__title">
-            {{ $t('Personal information') }}
-          </h2>
+        <h2 class="overview__title">
+          {{ $t('Personal information') }}
+        </h2>
 
-          <p class="overview__subtitle">
-            {{ $t('Manage your personal information.') }}
-          </p>
+        <div class="overview__header-hint">
+          {{ $t('Used on invoices and gift-card receipts') }}
         </div>
       </div>
 
@@ -350,6 +432,72 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </form>
+
+    <div class="overview__stats">
+      <RouterLink to="/profile/balance" class="overview__stat overview__stat_balance">
+        <div class="overview__stat-label">
+          {{ $t('Balance') }}
+        </div>
+
+        <div class="overview__stat-value">
+          <template v-if="!isStatsLoading">
+            <PriceFormatter :price="balance" size="size-34" />
+          </template>
+
+          <span v-else class="overview__stat-placeholder"></span>
+        </div>
+
+        <div class="overview__stat-action">
+          {{ $t('Top up') }}
+        </div>
+      </RouterLink>
+
+      <RouterLink to="/profile/orders" class="overview__stat">
+        <div class="overview__stat-label">
+          {{ $t('Orders') }}
+        </div>
+
+        <div class="overview__stat-value">
+          <template v-if="!isStatsLoading">
+            {{ ordersCount }}
+          </template>
+
+          <span v-else class="overview__stat-placeholder"></span>
+        </div>
+
+        <div class="overview__stat-description">
+          <template v-if="latestOrderDate"> {{ $t('Last one') }} {{ latestOrderDate }} </template>
+
+          <template v-else-if="!isStatsLoading">
+            {{ $t('No orders yet') }}
+          </template>
+        </div>
+      </RouterLink>
+
+      <RouterLink to="/wish-list" class="overview__stat">
+        <div class="overview__stat-label">
+          {{ $t('Wishlist') }}
+        </div>
+
+        <div class="overview__stat-value">
+          <template v-if="!isStatsLoading">
+            {{ wishlistCount }}
+          </template>
+
+          <span v-else class="overview__stat-placeholder"></span>
+        </div>
+
+        <div class="overview__stat-description">
+          <template v-if="priceDroppedCount">
+            {{ priceDroppedCount }} {{ $t('dropped in price') }}
+          </template>
+
+          <template v-else-if="!isStatsLoading">
+            {{ $t('No price drops') }}
+          </template>
+        </div>
+      </RouterLink>
+    </div>
   </div>
 </template>
 
@@ -362,14 +510,20 @@ onBeforeUnmount(() => {
   width: 100%;
   min-width: 0;
 
+  display: flex;
+  flex-direction: column;
+
+  @include adaptiveValue('gap', 24, 18);
+
   &__card {
     width: 100%;
     min-width: 0;
 
     border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
     background-color: var(--bg-secondary-color);
 
-    @include adaptiveValue('border-radius', 14, 12);
     @include adaptiveValue('padding-top', 36, 22);
     @include adaptiveValue('padding-right', 40, 16);
     @include adaptiveValue('padding-bottom', 40, 22);
@@ -378,17 +532,13 @@ onBeforeUnmount(() => {
 
   &__header {
     display: flex;
-    align-items: flex-start;
+    align-items: baseline;
     justify-content: space-between;
 
     min-width: 0;
 
-    @include adaptiveValue('gap', 30, 14);
-    @include adaptiveValue('margin-bottom', 30, 20);
-  }
-
-  &__header-content {
-    min-width: 0;
+    @include adaptiveValue('gap', 24, 14);
+    @include adaptiveValue('margin-bottom', 28, 20);
   }
 
   &__title {
@@ -401,36 +551,32 @@ onBeforeUnmount(() => {
     line-height: 1.2;
 
     @include adaptiveValue('font-size', 26, 20);
-
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 7, 5);
-    }
   }
 
-  &__subtitle {
-    margin: 0;
+  &__header-hint {
+    flex: 0 1 auto;
 
     color: var(--seconday-color);
 
-    @include adaptiveValue('font-size', 13, 12);
-    @include adaptiveValue('line-height', 20, 18);
+    text-align: right;
+
+    @include adaptiveValue('font-size', 12, 11);
+    @include adaptiveValue('line-height', 18, 16);
   }
 
   &__fields {
     width: 100%;
     min-width: 0;
 
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 
-    @include adaptiveValue('column-gap', 24, 10);
+    @include adaptiveValue('column-gap', 24, 12);
     @include adaptiveValue('row-gap', 22, 16);
   }
 
   &__field {
     min-width: 0;
-
-    flex: 0 1 calc(50% - 12px);
   }
 
   &__label {
@@ -441,13 +587,10 @@ onBeforeUnmount(() => {
     font-weight: 600;
     text-transform: uppercase;
 
-    @include adaptiveValue('font-size', 12, 10);
-    @include adaptiveValue('line-height', 17, 15);
-    @include adaptiveValue('letter-spacing', 1.44, 1.2);
-
-    &:not(:last-child) {
-      @include adaptiveValue('margin-bottom', 9, 7);
-    }
+    @include adaptiveValue('font-size', 11, 10);
+    @include adaptiveValue('line-height', 16, 15);
+    @include adaptiveValue('letter-spacing', 1.32, 1.2);
+    @include adaptiveValue('margin-bottom', 9, 7);
   }
 
   &__message {
@@ -456,10 +599,7 @@ onBeforeUnmount(() => {
     border-radius: 10px;
 
     @include adaptiveValue('margin-top', 24, 18);
-    @include adaptiveValue('padding-top', 11, 10);
-    @include adaptiveValue('padding-right', 14, 12);
-    @include adaptiveValue('padding-bottom', 11, 10);
-    @include adaptiveValue('padding-left', 14, 12);
+    @include adaptiveValue('padding', 12, 10);
     @include adaptiveValue('font-size', 13, 12);
     @include adaptiveValue('line-height', 19, 18);
 
@@ -486,7 +626,6 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
 
     width: fit-content;
-
     min-width: 174px;
   }
 
@@ -495,13 +634,152 @@ onBeforeUnmount(() => {
 
     color: var(--seconday-color);
 
+    @include adaptiveValue('font-size', 12, 11);
+    @include adaptiveValue('line-height', 18, 17);
+  }
+
+  &__stats {
+    width: 100%;
+    min-width: 0;
+
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    @include adaptiveValue('gap', 20, 12);
+  }
+
+  &__stat {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
+    background-color: var(--bg-secondary-color);
+
+    color: var(--primary-color);
+
+    transition:
+      border-color 0.3s ease,
+      transform 0.3s ease;
+
+    @include adaptiveValue('min-height', 148, 120);
+    @include adaptiveValue('padding-top', 27, 20);
+    @include adaptiveValue('padding-right', 30, 18);
+    @include adaptiveValue('padding-bottom', 27, 20);
+    @include adaptiveValue('padding-left', 30, 18);
+
+    &_balance {
+      border-color: var(--hint-primary-color);
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        border-color: var(--hint-primary-color);
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  &__stat-label {
+    color: var(--seconday-color);
+
+    font-weight: 600;
+    text-transform: uppercase;
+
+    @include adaptiveValue('font-size', 11, 10);
+    @include adaptiveValue('line-height', 16, 15);
+    @include adaptiveValue('letter-spacing', 2.2, 1.7);
+    @include adaptiveValue('margin-bottom', 8, 6);
+  }
+
+  &__stat-value {
+    min-height: 38px;
+
+    display: flex;
+    align-items: center;
+
+    color: var(--primary-color);
+
+    font-family: var(--font-gabarito);
+    font-weight: 900;
+    line-height: 1;
+
+    font-variant-numeric: tabular-nums;
+
+    @include adaptiveValue('font-size', 34, 27);
+    @include adaptiveValue('margin-bottom', 9, 7);
+
+    :deep(.price-formatter) {
+      font-family: var(--font-gabarito);
+      font-weight: 900;
+    }
+  }
+
+  &__stat-action {
+    margin-top: auto;
+
+    color: var(--hint-primary-color);
+
+    @include adaptiveValue('font-size', 13, 12);
+    @include adaptiveValue('line-height', 18, 17);
+  }
+
+  &__stat-description {
+    min-height: 18px;
+
+    margin-top: auto;
+
+    color: var(--seconday-color);
+
     @include adaptiveValue('font-size', 13, 11);
-    @include adaptiveValue('line-height', 19, 17);
+    @include adaptiveValue('line-height', 18, 16);
+  }
+
+  &__stat-placeholder {
+    display: block;
+
+    width: 72px;
+    height: 26px;
+
+    border-radius: 6px;
+
+    background-color: var(--border-primary-color);
+
+    animation: overview-pulse 1.2s ease-in-out infinite;
+  }
+
+  @media (max-width: $md4) {
+    &__stats {
+      grid-template-columns: 1fr;
+    }
   }
 
   @media (max-width: $md5) {
-    &__field {
-      flex: 1 1 100%;
+    gap: 0;
+
+    &__card {
+      padding-left: 0;
+      padding-right: 0;
+
+      border: 0;
+      border-radius: 0;
+
+      background-color: transparent;
+    }
+
+    &__header {
+      display: block;
+    }
+
+    &__header-hint {
+      display: none;
+    }
+
+    &__fields {
+      grid-template-columns: 1fr;
     }
 
     &__footer {
@@ -513,6 +791,10 @@ onBeforeUnmount(() => {
     }
 
     &__footer-hint {
+      display: none;
+    }
+
+    &__stats {
       display: none;
     }
   }
@@ -529,5 +811,16 @@ onBeforeUnmount(() => {
 .overview-message-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+@keyframes overview-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 </style>
