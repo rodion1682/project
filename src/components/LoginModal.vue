@@ -1,9 +1,9 @@
 <script setup>
-import { ref } from 'vue'
-import { useLoginModalStore } from '@/stores/loginModal'
-import { useRegModalStore } from '@/stores/regModal'
-import { useRecoverModalStore } from '@/stores/recoverModal'
 import { useLoginStore } from '@/stores/login'
+import { useLoginModalStore } from '@/stores/loginModal'
+import { useRecoverModalStore } from '@/stores/recoverModal'
+import { useRegModalStore } from '@/stores/regModal'
+import { ref } from 'vue'
 
 const loginModalStore = useLoginModalStore()
 const regModalStore = useRegModalStore()
@@ -47,7 +47,7 @@ const removeCyrillic = (value) => {
   <div class="modal flex justify-center items-center reg-modal">
     <div class="overlay" @click="close"></div>
     <div class="modal-wrapper flex">
-      <img alt="Close icon" class="close" src="@/assets/icons/close.svg" @click="close" />
+      <img alt="Close icon" class="close" src="" @click="close" />
       <div class="left flex flex-col justify-around items-center">
         <div class="logo flex items-center">
           <img alt="yourkeys" class="img" src="@/assets/img/logo.svg" />
@@ -86,17 +86,11 @@ const removeCyrillic = (value) => {
                 :placeholder="$t('Enter your password')"
                 v-model="pass"
               />
-              <img
-                alt="Eye icon"
-                class="eye"
-                src="@/assets/icons/eye.svg"
-                v-if="passType"
-                @click="passType = false"
-              />
+              <img alt="Eye icon" class="eye" src="" v-if="passType" @click="passType = false" />
               <img
                 alt="Eye icon active"
                 class="eye"
-                src="@/assets/icons/eye2.svg"
+                src=""
                 v-if="!passType"
                 @click="passType = true"
               />

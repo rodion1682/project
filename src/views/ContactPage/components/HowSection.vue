@@ -1,58 +1,58 @@
+<script></script>
+
 <template>
   <section class="how-section">
-    <div class="how-section__container _cnt-home">
-      <div class="how-section__heading">
-        <h2 class="how-section__title">
-          {{ $t('How buying works') }}
-        </h2>
+    <div class="how-section__heading">
+      <h2 class="how-section__title">
+        {{ $t('How buying works') }}
+      </h2>
 
-        <div class="how-section__line"></div>
+      <div class="how-section__line"></div>
+    </div>
+
+    <div class="how-section__items">
+      <div class="how-section__item">
+        <div class="how-section__number">
+          {{ $t('01 / 03') }}
+        </div>
+
+        <h3 class="how-section__item-title">
+          {{ $t('Choose a title') }}
+        </h3>
+
+        <p class="how-section__text">
+          {{ $t('Filter by launcher, genre or discount, then send it to the cart.') }}
+        </p>
       </div>
 
-      <div class="how-section__items">
-        <div class="how-section__item">
-          <div class="how-section__number">
-            {{ $t('01 / 03') }}
-          </div>
-
-          <h3 class="how-section__item-title">
-            {{ $t('Choose a title') }}
-          </h3>
-
-          <p class="how-section__text">
-            {{ $t('Filter by launcher, genre or discount, then send it to the cart.') }}
-          </p>
+      <div class="how-section__item">
+        <div class="how-section__number">
+          {{ $t('02 / 03') }}
         </div>
 
-        <div class="how-section__item">
-          <div class="how-section__number">
-            {{ $t('02 / 03') }}
-          </div>
+        <h3 class="how-section__item-title">
+          {{ $t('Pay from your balance') }}
+        </h3>
 
-          <h3 class="how-section__item-title">
-            {{ $t('Pay from your balance') }}
-          </h3>
+        <p class="how-section__text">
+          {{ $t('Load it once by card or gift card, then every later order takes two clicks.') }}
+        </p>
+      </div>
 
-          <p class="how-section__text">
-            {{ $t('Load it once by card or gift card, then every later order takes two clicks.') }}
-          </p>
+      <div class="how-section__item">
+        <div class="how-section__number">
+          {{ $t('03 / 03') }}
         </div>
 
-        <div class="how-section__item">
-          <div class="how-section__number">
-            {{ $t('03 / 03') }}
-          </div>
+        <h3 class="how-section__item-title">
+          {{ $t('Activate and play') }}
+        </h3>
 
-          <h3 class="how-section__item-title">
-            {{ $t('Activate and play') }}
-          </h3>
-
-          <p class="how-section__text">
-            {{
-              $t('Take the code from the order page or your inbox and paste it into the launcher.')
-            }}
-          </p>
-        </div>
+        <p class="how-section__text">
+          {{
+            $t('Take the code from the order page or your inbox and paste it into the launcher.')
+          }}
+        </p>
       </div>
     </div>
   </section>

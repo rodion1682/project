@@ -45,7 +45,7 @@ const platformConfig = computed(() => [
   },
   {
     title: t('Gift cards'),
-    search: ['gift card', 'gift'],
+    path: '/gift-card',
     class: 'gift-cards',
   },
 ])
@@ -69,6 +69,15 @@ const platformItems = computed(() => {
 
   return platformConfig.value
     .map((config) => {
+      if (config.path) {
+        return {
+          id: config.path,
+          title: config.title,
+          path: config.path,
+          class: config.class,
+        }
+      }
+
       const platform = platforms.find((item) => {
         const title = String(item.title || '').toLowerCase()
         const slug = String(item.slug || '').toLowerCase()
@@ -85,17 +94,14 @@ const platformItems = computed(() => {
       }
 
       return {
+        id: platform.id,
         title: config.title,
-        slug: platform.slug,
+        path: `/products/${platform.slug}`,
         class: config.class,
       }
     })
     .filter(Boolean)
 })
-
-const getPlatformLink = (platform) => {
-  return `/products/${platform.slug}`
-}
 
 const openLoginModal = () => {
   // loginModalStore.openModal()
@@ -140,8 +146,8 @@ onMounted(() => {
           <div class="footer__label">{{ $t('Store') }}</div>
           <RouterLink
             v-for="platform in platformItems"
-            :key="platform.slug"
-            :to="getPlatformLink(platform)"
+            :key="platform.id"
+            :to="platform.path"
             class="footer__link"
           >
             {{ platform.title }}

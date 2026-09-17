@@ -7,8 +7,11 @@ import { useContactStore } from '@/stores/contact'
 import { useProfileStore } from '@/stores/profile'
 import { useSettingsStore } from '@/stores/settings'
 import { useStaticStore } from '@/stores/static'
+import { useMediaQuery } from '@vueuse/core'
 import FaqSection from './components/FaqSection.vue'
 import HowSection from './components/HowSection.vue'
+
+const isMobile = useMediaQuery('(max-width: 439.98px)')
 
 const { t } = useI18n()
 
@@ -36,12 +39,6 @@ const errors = ref({
   message: '',
   terms: '',
 })
-
-/*
-|--------------------------------------------------------------------------
-| Debounced validation
-|--------------------------------------------------------------------------
-*/
 
 const VALIDATION_DELAY = 450
 
@@ -598,7 +595,7 @@ onBeforeUnmount(() => {
               </div>
 
               <span class="contact-page__info-note">
-                {{ $t('E-mail') }}
+                {{ $t('Replies in ~2 h') }}
               </span>
             </div>
 
@@ -617,7 +614,7 @@ onBeforeUnmount(() => {
               </div>
 
               <span class="contact-page__info-note">
-                {{ $t('Support') }}
+                {{ $t('Mon-Fri 9-18') }}
               </span>
             </div>
 
@@ -625,7 +622,7 @@ onBeforeUnmount(() => {
               {{ requisites }}
             </div>
           </div>
-          <FaqSection class="contact-page__faq contact-page__faq_desktop" />
+          <FaqSection v-if="!isMobile" class="contact-page__faq contact-page__faq_desktop" />
         </div>
 
         <div class="contact-page__form-card">
@@ -843,8 +840,8 @@ onBeforeUnmount(() => {
           </form>
         </div>
       </div>
-      <HowSection />
-      <FaqSection class="contact-page__faq contact-page__faq_mobile" />
+      <HowSection class="contact-page__how" />
+      <FaqSection v-if="isMobile" class="contact-page__faq contact-page__faq_mobile" />
     </div>
   </main>
 </template>
@@ -866,7 +863,6 @@ onBeforeUnmount(() => {
 
   &__container {
     width: 100%;
-    min-width: 0;
   }
 
   &__breadcrumbs {
@@ -927,6 +923,13 @@ onBeforeUnmount(() => {
     @media (max-width: $md3) {
       grid-template-columns: 1fr;
     }
+    @media (max-width: $md8) {
+      order: 1;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+  }
+  &__how {
   }
 
   &__information {
@@ -961,16 +964,13 @@ onBeforeUnmount(() => {
 
   &__intro {
     margin-top: 0;
-
     color: var(--seconday-color);
-
     @include adaptiveValue('font-size', 16, 14);
     @include adaptiveValue('line-height', 28, 23);
     @include adaptiveValue('margin-bottom', 24, 14);
   }
 
-  &__info-card,
-  &__form-card {
+  &__info-card {
     width: 100%;
     min-width: 0;
 
@@ -978,6 +978,20 @@ onBeforeUnmount(() => {
     border-radius: 14px;
 
     background-color: var(--bg-secondary-color);
+  }
+  &__form-card {
+    width: 100%;
+    @media (min-width: $md8) {
+      min-width: 0;
+
+      border: 2px solid var(--border-primary-color);
+      border-radius: 14px;
+
+      background-color: var(--bg-secondary-color);
+    }
+    @media (max-width: $md8) {
+      order: 2;
+    }
   }
 
   &__info-card {
@@ -1064,10 +1078,12 @@ onBeforeUnmount(() => {
   }
 
   &__form-card {
-    @include adaptiveValue('padding-top', 34, 20);
-    @include adaptiveValue('padding-right', 38, 18);
-    @include adaptiveValue('padding-bottom', 38, 22);
-    @include adaptiveValue('padding-left', 38, 18);
+    @media (min-width: $md8) {
+      @include adaptiveValue('padding-top', 34, 20);
+      @include adaptiveValue('padding-right', 38, 18);
+      @include adaptiveValue('padding-bottom', 38, 22);
+      @include adaptiveValue('padding-left', 38, 18);
+    }
   }
 
   &__form-title {
@@ -1134,7 +1150,7 @@ onBeforeUnmount(() => {
     outline: none;
     border-radius: 10px;
 
-    background-color: var(--bg-secondary-color);
+    background-color: var(--bg-primary-color);
 
     color: var(--primary-color);
 
@@ -1165,6 +1181,9 @@ onBeforeUnmount(() => {
         border-color: var(--error-color);
       }
     }
+    @media (max-width: $md8) {
+      background-color: var(--bg-secondary-color);
+    }
   }
 
   &__input {
@@ -1178,7 +1197,7 @@ onBeforeUnmount(() => {
   &__textarea {
     display: block;
 
-    resize: vertical;
+    resize: none;
 
     @include adaptiveValue('min-height', 160, 130);
     @include adaptiveValue('padding-top', 14, 12);

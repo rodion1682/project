@@ -49,7 +49,7 @@ onMounted(() => {
       <img
         alt="Close icon"
         class="close"
-        src="@/assets/icons/close.svg"
+        src=""
         @click="topUpModalStore.closeModal"
       />
 

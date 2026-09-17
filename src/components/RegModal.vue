@@ -53,7 +53,7 @@ function close() {
     <div class="overlay" @click="close"></div>
 
     <div class="modal-wrapper flex">
-      <img alt="Close icon" class="close" src="@/assets/icons/close.svg" @click="close" />
+      <img alt="Close icon" class="close" src="" @click="close" />
 
       <div class="left flex flex-col justify-around items-center">
         <div class="logo flex items-center">
@@ -151,7 +151,7 @@ function close() {
               <img
                 alt="Eye icon"
                 class="eye"
-                src="@/assets/icons/eye.svg"
+                src=""
                 v-if="passType"
                 @click="passType = false"
               />
@@ -159,7 +159,7 @@ function close() {
               <img
                 alt="Eye icon active"
                 class="eye"
-                src="@/assets/icons/eye2.svg"
+                src=""
                 v-if="!passType"
                 @click="passType = true"
               />
@@ -181,7 +181,7 @@ function close() {
               <img
                 alt="Eye icon"
                 class="eye"
-                src="@/assets/icons/eye.svg"
+                src=""
                 v-if="passType"
                 @click="passType = false"
               />
@@ -189,7 +189,7 @@ function close() {
               <img
                 alt="Eye icon active"
                 class="eye"
-                src="@/assets/icons/eye2.svg"
+                src=""
                 v-if="!passType"
                 @click="passType = true"
               />

@@ -43,7 +43,7 @@ recoverStore
   <div class="modal modal-recover flex justify-center items-center">
     <div class="overlay" @click="close"></div>
     <div class="modal-wrapper flex">
-      <img alt="Close icon" class="close" src="@/assets/icons/close.svg" @click="close" />
+      <img alt="Close icon" class="close" src="" @click="close" />
       <form class="form flex flex-col justify-center items-center" @submit.prevent="submitRecover">
         <div class="text text-24 uppercase text-russo">{{ $t('Password recovery') }}</div>
         <div class="form-wrapper">
