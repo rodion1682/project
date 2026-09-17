@@ -950,6 +950,9 @@ onBeforeUnmount(() => {
       &::placeholder {
         color: var(--seconday-color);
       }
+      @media (max-width: $md4) {
+        background-color: var(--bg-secondary-color);
+      }
     }
   }
 
@@ -967,6 +970,9 @@ onBeforeUnmount(() => {
 
     &.error {
       border-color: var(--error-color, #e64b4b);
+    }
+    @media (max-width: $md4) {
+      background-color: var(--bg-secondary-color);
     }
 
     input {
@@ -1008,6 +1014,13 @@ onBeforeUnmount(() => {
       minmax(0, 1.4fr);
 
     gap: 14px;
+    @media (max-width: $md4) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      > :last-child {
+        grid-column: 1 / -1;
+      }
+    }
   }
 
   &__error {
@@ -1270,10 +1283,6 @@ onBeforeUnmount(() => {
 
     &__card-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    &__cardholder {
-      display: none;
     }
 
     &__after {
