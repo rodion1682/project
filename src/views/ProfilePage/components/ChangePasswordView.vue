@@ -340,15 +340,17 @@ onBeforeUnmount(() => {
     width: 100%;
     min-width: 0;
 
-    border: 2px solid var(--border-primary-color);
+    @media (min-width: $md8) {
+      border: 2px solid var(--border-primary-color);
 
-    background-color: var(--bg-secondary-color);
+      background-color: var(--bg-secondary-color);
 
-    @include adaptiveValue('border-radius', 14, 12);
-    @include adaptiveValue('padding-top', 36, 22);
-    @include adaptiveValue('padding-right', 40, 16);
-    @include adaptiveValue('padding-bottom', 40, 22);
-    @include adaptiveValue('padding-left', 40, 16);
+      @include adaptiveValue('border-radius', 14, 12);
+      @include adaptiveValue('padding-top', 36, 22);
+      @include adaptiveValue('padding-right', 40, 16);
+      @include adaptiveValue('padding-bottom', 40, 22);
+      @include adaptiveValue('padding-left', 40, 16);
+    }
   }
 
   &__header {
@@ -425,6 +427,11 @@ onBeforeUnmount(() => {
 
     :deep(input) {
       @include adaptiveValue('padding-right', 52, 45);
+    }
+    @media (min-width: $md8) {
+      :deep(.input__content) {
+        background-color: var(--bg-primary-color);
+      }
     }
   }
 

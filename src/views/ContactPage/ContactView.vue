@@ -7,11 +7,8 @@ import { useContactStore } from '@/stores/contact'
 import { useProfileStore } from '@/stores/profile'
 import { useSettingsStore } from '@/stores/settings'
 import { useStaticStore } from '@/stores/static'
-import { useMediaQuery } from '@vueuse/core'
 import FaqSection from './components/FaqSection.vue'
 import HowSection from './components/HowSection.vue'
-
-const isMobile = useMediaQuery('(max-width: 439.98px)')
 
 const { t } = useI18n()
 
@@ -622,7 +619,7 @@ onBeforeUnmount(() => {
               {{ requisites }}
             </div>
           </div>
-          <FaqSection v-if="!isMobile" class="contact-page__faq contact-page__faq_desktop" />
+          <FaqSection class="contact-page__faq contact-page__faq_desktop" />
         </div>
 
         <div class="contact-page__form-card">
@@ -841,7 +838,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <HowSection class="contact-page__how" />
-      <FaqSection v-if="isMobile" class="contact-page__faq contact-page__faq_mobile" />
+      <FaqSection class="contact-page__faq contact-page__faq_mobile" />
     </div>
   </main>
 </template>

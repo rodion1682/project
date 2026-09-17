@@ -1,33 +1,17 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-
-import axios from '@/plugins/axios'
+import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
 
 import Loader from '@/components/Loader.vue'
 
-const faq = ref([])
-const isLoading = ref(false)
+import { useFaqStore } from '@/stores/faq'
 
-const getFaq = async () => {
-  isLoading.value = true
+const faqStore = useFaqStore()
 
-  try {
-    const response = await axios.get('faq')
-
-    if (response.data?.status === 'OK' && Array.isArray(response.data?.payload)) {
-      faq.value = response.data.payload
-    } else {
-      faq.value = []
-    }
-  } catch {
-    faq.value = []
-  } finally {
-    isLoading.value = false
-  }
-}
+const { faq, isLoading } = storeToRefs(faqStore)
 
 onMounted(() => {
-  getFaq()
+  faqStore.getFaq()
 })
 </script>
 
