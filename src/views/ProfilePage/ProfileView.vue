@@ -33,6 +33,17 @@ const logoutStore = useLogoutStore()
 const profileStore = useProfileStore()
 
 const activeOrder = ref(null)
+const isBalanceTopUp = ref(false)
+
+const handleBalanceTopUpChange = (value) => {
+  isBalanceTopUp.value = value
+}
+
+const userBalance = computed(() => {
+  const value = Number(profileStore.profile?.balance)
+
+  return Number.isFinite(value) ? value : 0
+})
 
 const handleOrderLoaded = (order) => {
   activeOrder.value = order
@@ -203,25 +214,41 @@ const getNavLink = (item) => {
               <div class="profile-page__order-row profile-page__order-row_total">
                 <span>{{ $t('Order total') }}:</span>
 
-                <PriceFormatter :price="activeOrder.amount" size="size-24" />
+                <PriceFormatter :price="activeOrder.amount" size="size-34" />
               </div>
             </div>
           </template>
 
           <div class="profile-page__user" :class="{ hide: isOrderDetails }">
-            <div class="profile-page__avatar">
-              {{ initials }}
-            </div>
+            <template v-if="page === 'balance' && isBalanceTopUp">
+              <div class="profile-page__balance">
+                <div class="profile-page__balance-label">
+                  {{ $t('My balance') }}
+                </div>
 
-            <div class="profile-page__user-content">
-              <div class="profile-page__name">
-                {{ fullName }}
+                <PriceFormatter
+                  :price="userBalance"
+                  size="size-24"
+                  class="profile-page__balance-value"
+                />
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="profile-page__avatar">
+                {{ initials }}
               </div>
 
-              <div v-if="profileStore.profile?.email" class="profile-page__email">
-                {{ profileStore.profile.email }}
+              <div class="profile-page__user-content">
+                <div class="profile-page__name">
+                  {{ fullName }}
+                </div>
+
+                <div v-if="profileStore.profile?.email" class="profile-page__email">
+                  {{ profileStore.profile.email }}
+                </div>
               </div>
-            </div>
+            </template>
           </div>
 
           <nav class="profile-page__nav">
@@ -277,7 +304,7 @@ const getNavLink = (item) => {
             @loaded="handleOrderLoaded"
           />
 
-          <BalanceView v-else-if="page === 'balance'" />
+          <BalanceView v-else-if="page === 'balance'" @top-up-change="handleBalanceTopUpChange" />
 
           <ChangePasswordView v-else-if="page === 'change-password'" />
         </div>
@@ -447,6 +474,32 @@ const getNavLink = (item) => {
         @include hide-item;
       }
     }
+  }
+
+  &__balance {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+  }
+
+  &__balance-label {
+    color: var(--seconday-color);
+
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 15px;
+
+    letter-spacing: 2.2px;
+    text-transform: uppercase;
+  }
+
+  &__balance-value {
+    width: fit-content;
+    line-height: 100% !important;
   }
 
   &__avatar {

@@ -4,21 +4,26 @@ import { ref } from 'vue'
 import BalanceHistory from './BalanceHistory.vue'
 import BalanceTopUp from './BalanceTopUp.vue'
 
+const emit = defineEmits(['top-up-change'])
+
 const view = ref('history')
 const topUpMode = ref('card')
 
 const openCardTopUp = () => {
   topUpMode.value = 'card'
   view.value = 'top-up'
+  emit('top-up-change', true)
 }
 
 const openGiftCard = () => {
   topUpMode.value = 'gift-card'
   view.value = 'top-up'
+  emit('top-up-change', true)
 }
 
 const closeTopUp = () => {
   view.value = 'history'
+  emit('top-up-change', false)
 }
 </script>
 

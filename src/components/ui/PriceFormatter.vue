@@ -26,7 +26,7 @@ const props = defineProps({
 
   size: {
     type: String,
-    default: 'size-15', // size-12 | size-15 | size-21 | size-21-market | size-44
+    default: 'size-15', // size-12 | size-15 | size-21 | size-21-market | size-34 | size-44
   },
 
   price: {
