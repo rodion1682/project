@@ -14,9 +14,7 @@ import WishListView from '@/views/WishListPage/WishListView.vue'
 import ContactView from '@/views/ContactPage/ContactView.vue'
 import ProfileView from '@/views/ProfilePage/ProfileView.vue'
 import FailPayment from '../views/FailPayment.vue'
-import FaqView from '../views/FaqView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
-import PayView from '../views/PayView.vue'
 import StaticPageView from '../views/StaticPageView.vue'
 import SuccessPayment from '../views/SuccessPayment.vue'
 
@@ -33,16 +31,16 @@ const router = createRouter({
       name: 'auth',
       component: AuthView,
     },
-    {
-      path: '/faq',
-      name: 'faq',
-      component: FaqView,
-    },
-    {
-      path: '/pay',
-      name: 'pay',
-      component: PayView,
-    },
+    // {
+    //   path: '/faq',
+    //   name: 'faq',
+    //   component: FaqView,
+    // },
+    // {
+    //   path: '/pay',
+    //   name: 'pay',
+    //   component: PayView,
+    // },
     {
       path: '/wish-list',
       name: 'wishList',

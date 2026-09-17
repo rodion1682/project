@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 
 import axios from '@/plugins/axios'
 
-import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,23 +17,13 @@ const props = defineProps({
 })
 
 const router = useRouter()
-
-const authStore = useAuthStore()
 const profileStore = useProfileStore()
 
-const isLoading = ref(false)
+const activeOrder = ref(null)
+const isLoading = ref(true)
 const isInvoiceLoading = ref(false)
 const copiedKey = ref('')
-
-const activeOrder = computed(() => {
-  if (!Array.isArray(profileStore.orderHistory)) {
-    return null
-  }
-
-  return (
-    profileStore.orderHistory.find((item) => String(item.order_nr) === String(props.order)) || null
-  )
-})
+const error = ref('')
 
 const orderItems = computed(() => {
   return Array.isArray(activeOrder.value?.items) ? activeOrder.value.items : []
@@ -125,6 +114,32 @@ const goBack = () => {
   router.push('/profile/orders')
 }
 
+const loadOrder = async () => {
+  if (!props.order) {
+    activeOrder.value = null
+    isLoading.value = false
+    return
+  }
+
+  isLoading.value = true
+  error.value = ''
+
+  try {
+    const orders = await profileStore.getOrderHistory()
+
+    activeOrder.value = orders.find((item) => String(item.order_nr) === String(props.order)) || null
+
+    if (!activeOrder.value) {
+      error.value = 'Order not found'
+    }
+  } catch (err) {
+    activeOrder.value = null
+    error.value = err?.response?.data?.message || 'Failed to load order'
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const downloadInvoice = async () => {
   if (!activeOrder.value?.order_nr || isInvoiceLoading.value) {
     return
@@ -148,7 +163,6 @@ const downloadInvoice = async () => {
     link.download = `${activeOrder.value.order_nr}.pdf`
 
     document.body.appendChild(link)
-
     link.click()
     link.remove()
 
@@ -158,32 +172,16 @@ const downloadInvoice = async () => {
   }
 }
 
-const loadOrder = async () => {
-  if (!authStore.isAuth) {
-    return
-  }
-
-  isLoading.value = true
-
-  try {
-    await profileStore.getOrderHistory()
-  } finally {
-    isLoading.value = false
-  }
-}
-
 watch(
   () => props.order,
-  async (value, oldValue) => {
-    if (!value || value === oldValue) {
-      return
-    }
-
-    await loadOrder()
+  () => {
+    loadOrder()
   },
 )
 
-onMounted(loadOrder)
+onMounted(() => {
+  loadOrder()
+})
 </script>
 
 <template>
@@ -744,8 +742,6 @@ onMounted(loadOrder)
     }
 
     &__product-price {
-      display: block;
-
       margin-top: 4px;
     }
 
