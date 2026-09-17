@@ -9,6 +9,9 @@ import SvgIcon from '@/components/ui/icons/SvgIcon.vue'
 
 import Loader from '@/components/Loader.vue'
 import { CartIcon } from '@/components/ui/icons'
+import { onBeforeRouteUpdate, useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const currStore = useCurrStore()
 const profileStore = useProfileStore()
@@ -148,29 +151,35 @@ const loadOrders = async () => {
 
   try {
     await profileStore.getOrderHistory()
+  } catch (error) {
+    console.error('Failed to load orders:', error)
   } finally {
     isLoading.value = false
   }
 }
 
+onMounted(() => {
+  loadOrders()
+})
+
+onBeforeRouteUpdate((to) => {
+  if (to.path === '/profile/orders') {
+    loadOrders()
+  }
+})
+
 watch(
   () => currStore.currency?.code,
-  async (currency, previousCurrency) => {
+  (currency, previousCurrency) => {
     if (!currency || currency === previousCurrency) {
       return
     }
 
-    await loadOrders()
+    if (route.path === '/profile/orders') {
+      loadOrders()
+    }
   },
 )
-
-watch(uniqueStatuses, (statuses) => {
-  if (activeStatus.value !== 'all' && !statuses.includes(activeStatus.value)) {
-    activeStatus.value = 'all'
-  }
-})
-
-onMounted(loadOrders)
 </script>
 
 <template>

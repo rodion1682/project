@@ -79,6 +79,19 @@ const priceClasses = computed(() => ['price', props.size, props.class])
     font-family: var(--font-gabarito);
     font-weight: 900;
   }
+  &.size-24 {
+    display: flex;
+    gap: 6px;
+    color: var(--primary-color);
+    @include adaptiveValue('font-size', 24, 22);
+    @include adaptiveValue('line-height', 29, 22);
+    font-family: var(--font-gabarito);
+    font-weight: 900;
+    @media (max-width: $md8) {
+      font-family: var(--font-open-sans);
+      font-weight: 600;
+    }
+  }
   &.size-34 {
     display: flex;
     @include adaptiveValue('gap', 8, 6);

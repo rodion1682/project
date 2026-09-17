@@ -1,13 +1,14 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
-import ProductItem from '@/components/ProductItem.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
+import axios from '@/plugins/axios'
 
 import { useAuthStore } from '@/stores/auth'
-import { useCurrStore } from '@/stores/currencies'
 import { useProfileStore } from '@/stores/profile'
-import { useRouter } from 'vue-router'
+
+import BaseButton from '@/components/ui/BaseButton.vue'
+import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 
 const props = defineProps({
   order: {
@@ -18,97 +19,49 @@ const props = defineProps({
 
 const router = useRouter()
 
-const profileStore = useProfileStore()
-const currStore = useCurrStore()
 const authStore = useAuthStore()
+const profileStore = useProfileStore()
 
 const isLoading = ref(false)
+const isInvoiceLoading = ref(false)
+const copiedKey = ref('')
 
 const activeOrder = computed(() => {
-  const orders = Array.isArray(profileStore.orderHistory) ? profileStore.orderHistory : []
+  if (!Array.isArray(profileStore.orderHistory)) {
+    return null
+  }
 
   return (
-    orders.find((item) => {
-      return String(item.order_nr) === String(props.order)
-    }) || null
+    profileStore.orderHistory.find((item) => String(item.order_nr) === String(props.order)) || null
   )
 })
 
 const orderItems = computed(() => {
-  if (!activeOrder.value) {
-    return []
-  }
-
-  const possibleCollections = [
-    activeOrder.value.items,
-    activeOrder.value.products,
-    activeOrder.value.order_items,
-    activeOrder.value.orderItems,
-  ]
-
-  return possibleCollections.find((items) => Array.isArray(items)) || []
+  return Array.isArray(activeOrder.value?.items) ? activeOrder.value.items : []
 })
 
-const buyer = computed(() => {
-  return activeOrder.value?.user || {}
-})
-
-const buyerName = computed(() => {
-  const firstName = buyer.value?.first_name || buyer.value?.firstName || buyer.value?.name || ''
-
-  const lastName = buyer.value?.last_name || buyer.value?.lastName || buyer.value?.surname || ''
-
-  return `${firstName} ${lastName}`.trim() || '—'
-})
-
-const buyerEmail = computed(() => {
-  return buyer.value?.email || '—'
-})
-
-const orderCurrency = computed(() => {
+const paymentMethod = computed(() => {
   const order = activeOrder.value
 
   if (!order) {
     return ''
   }
 
-  const currencyCode = order.currencyCode || order.currency || ''
-
-  const currency = Array.isArray(currStore.currencies)
-    ? currStore.currencies.find((item) => {
-        return item.code === currencyCode
-      })
-    : null
-
-  return currency?.symbol || currencyCode || currStore.currency?.symbol || ''
+  return (
+    order.payment_method || order.paymentMethod || order.payment_type || order.paymentType || ''
+  )
 })
 
-const formattedAmount = computed(() => {
-  const amount = Number(activeOrder.value?.amount)
-
-  if (!Number.isFinite(amount)) {
-    return activeOrder.value?.amount || '0.00'
-  }
-
-  return amount.toFixed(2)
+const showStatus = computed(() => {
+  return Boolean(activeOrder.value?.status)
 })
-
-const goBack = () => {
-  router.push({ path: '/profile/orders' })
-}
 
 const formatDate = (value) => {
   if (!value) {
     return '—'
   }
 
-  let date
-
-  if (typeof value === 'number') {
-    date = new Date(value < 1000000000000 ? value * 1000 : value)
-  } else {
-    date = new Date(value)
-  }
+  const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
     return '—'
@@ -117,38 +70,92 @@ const formatDate = (value) => {
   const day = String(date.getDate()).padStart(2, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
 
-  return `${day}.${month}.${year} ${hours}:${minutes}`
+  return `${day}.${month}.${year}`
 }
 
-const getStatusClass = (status) => {
-  const value = String(status || '')
-    .trim()
-    .toLowerCase()
-
-  if (
-    ['delivered', 'completed', 'complete', 'success', 'successful', 'paid', 'approved'].includes(
-      value,
-    )
-  ) {
-    return 'success'
+const getKeys = (item) => {
+  if (Array.isArray(item?.keys)) {
+    return item.keys.filter(Boolean)
   }
 
-  if (['refunded', 'refund'].includes(value)) {
-    return 'refunded'
+  if (item?.key) {
+    return [item.key]
   }
 
-  if (['failed', 'error', 'cancelled', 'canceled', 'declined', 'rejected'].includes(value)) {
-    return 'error'
+  if (item?.code) {
+    return [item.code]
   }
 
-  if (['pending', 'processing', 'waiting'].includes(value)) {
-    return 'pending'
+  return []
+}
+
+const copyKey = async (key) => {
+  if (!key) {
+    return
   }
 
-  return 'default'
+  try {
+    await navigator.clipboard.writeText(key)
+
+    copiedKey.value = key
+
+    setTimeout(() => {
+      if (copiedKey.value === key) {
+        copiedKey.value = ''
+      }
+    }, 2000)
+  } catch {
+    copiedKey.value = ''
+  }
+}
+
+const goToContact = (item) => {
+  router.push({
+    path: '/contact-us',
+    query: {
+      order: activeOrder.value?.order_nr || '',
+      topic: 'key',
+      product: item?.title || '',
+    },
+  })
+}
+
+const goBack = () => {
+  router.push('/profile/orders')
+}
+
+const downloadInvoice = async () => {
+  if (!activeOrder.value?.order_nr || isInvoiceLoading.value) {
+    return
+  }
+
+  isInvoiceLoading.value = true
+
+  try {
+    const response = await axios.get(`orders/download/${activeOrder.value.order_nr}`, {
+      responseType: 'blob',
+    })
+
+    const blob = new Blob([response.data], {
+      type: response.headers['content-type'] || 'application/pdf',
+    })
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `${activeOrder.value.order_nr}.pdf`
+
+    document.body.appendChild(link)
+
+    link.click()
+    link.remove()
+
+    window.URL.revokeObjectURL(url)
+  } finally {
+    isInvoiceLoading.value = false
+  }
 }
 
 const loadOrder = async () => {
@@ -166,9 +173,9 @@ const loadOrder = async () => {
 }
 
 watch(
-  () => currStore.currency?.code,
-  async (currency, previousCurrency) => {
-    if (!currency || currency === previousCurrency || !authStore.isAuth) {
+  () => props.order,
+  async (value, oldValue) => {
+    if (!value || value === oldValue) {
       return
     }
 
@@ -176,195 +183,138 @@ watch(
   },
 )
 
-watch(
-  () => props.order,
-  async (orderId, previousOrderId) => {
-    if (!orderId || orderId === previousOrderId || !authStore.isAuth) {
-      return
-    }
-
-    if (!activeOrder.value) {
-      await loadOrder()
-    }
-  },
-)
-
 onMounted(loadOrder)
 </script>
 
 <template>
-  <div class="profile-order">
-    <div class="profile-order__header">
-      <BaseButton @click="goBack" variant="bordered" class="profile-order__back">
-        {{ $t('Back to orders') }}
-      </BaseButton>
-    </div>
-
-    <div v-if="isLoading && !activeOrder" class="profile-order__loading">
-      <div class="profile-order__spinner"></div>
+  <div class="order-view">
+    <div v-if="isLoading && !activeOrder" class="order-view__loading">
+      <div class="order-view__spinner"></div>
     </div>
 
     <template v-else-if="activeOrder">
-      <section class="profile-order__summary">
-        <div class="profile-order__summary-main">
-          <div class="profile-order__eyebrow">
-            {{ $t('Order') }}
-          </div>
-
-          <h2 class="profile-order__title">#{{ activeOrder.order_nr }}</h2>
-
-          <div class="profile-order__summary-meta">
-            {{ formatDate(activeOrder.created_at) }}
-          </div>
+      <div class="order-view__mobile-summary">
+        <div class="order-view__summary-row">
+          <span>{{ $t('Order date') }}:</span>
+          <strong>{{ formatDate(activeOrder.created_at) }}</strong>
         </div>
 
-        <div class="profile-order__summary-side">
-          <span
-            :class="[
-              'profile-order__status',
-              `profile-order__status_${getStatusClass(activeOrder.status)}`,
-            ]"
-          >
-            {{ activeOrder.status ? $t(activeOrder.status) : '—' }}
-          </span>
-
-          <div class="profile-order__summary-total">
-            {{ formattedAmount }}
-            {{ orderCurrency }}
-          </div>
-        </div>
-      </section>
-
-      <section class="profile-order__products">
-        <div class="profile-order__section-heading">
-          <h2 class="profile-order__section-title">
-            {{ $t('Products') }}
-          </h2>
-
-          <span v-if="orderItems.length" class="profile-order__products-count">
-            {{ orderItems.length }}
-            {{ $t(orderItems.length === 1 ? 'item' : 'items') }}
-          </span>
+        <div v-if="paymentMethod" class="order-view__summary-row">
+          <span>{{ $t('Paid with') }}:</span>
+          <strong>{{ $t(paymentMethod) }}</strong>
         </div>
 
-        <div v-if="orderItems.length" class="profile-order__products-list">
-          <ProductItem
-            v-for="item in orderItems"
-            :key="item.id"
-            :item="item"
-            :itemCurr="activeOrder.currencyCode || activeOrder.currency || orderCurrency"
-            :isBought="true"
-          />
+        <div v-if="showStatus" class="order-view__summary-row order-view__summary-row_status">
+          <span>{{ $t('Status') }}:</span>
+
+          <strong class="order-view__status">
+            {{ $t(activeOrder.status) }}
+          </strong>
         </div>
 
-        <div v-else class="profile-order__products-empty">
-          {{ $t('No products to display') }}
+        <div class="order-view__summary-divider"></div>
+
+        <div class="order-view__summary-row order-view__summary-row_total">
+          <span>{{ $t('Order total') }}:</span>
+
+          <PriceFormatter :price="activeOrder.amount" size="size-24" />
         </div>
-      </section>
-
-      <div class="profile-order__details-grid">
-        <section class="profile-order__card">
-          <h2 class="profile-order__card-title">
-            {{ $t('Order details') }}
-          </h2>
-
-          <div class="profile-order__rows">
-            <div class="profile-order__row">
-              <span class="profile-order__row-label">
-                {{ $t('Order number') }}
-              </span>
-
-              <span class="profile-order__row-value"> #{{ activeOrder.order_nr }} </span>
-            </div>
-
-            <div class="profile-order__row">
-              <span class="profile-order__row-label">
-                {{ $t('Order date') }}
-              </span>
-
-              <span class="profile-order__row-value">
-                {{ formatDate(activeOrder.created_at) }}
-              </span>
-            </div>
-
-            <div class="profile-order__row">
-              <span class="profile-order__row-label">
-                {{ $t('Status') }}
-              </span>
-
-              <span
-                :class="[
-                  'profile-order__status',
-                  `profile-order__status_${getStatusClass(activeOrder.status)}`,
-                ]"
-              >
-                {{ activeOrder.status ? $t(activeOrder.status) : '' }}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section class="profile-order__card">
-          <h2 class="profile-order__card-title">
-            {{ $t('Buyer information') }}
-          </h2>
-
-          <div class="profile-order__rows">
-            <div class="profile-order__row">
-              <span class="profile-order__row-label">
-                {{ $t('Name, Surname') }}
-              </span>
-
-              <span class="profile-order__row-value">
-                {{ buyerName }}
-              </span>
-            </div>
-
-            <div class="profile-order__row">
-              <span class="profile-order__row-label">
-                {{ $t('E-mail') }}
-              </span>
-
-              <a
-                v-if="buyerEmail !== '—'"
-                :href="`mailto:${buyerEmail}`"
-                class="profile-order__row-value profile-order__email"
-              >
-                {{ buyerEmail }}
-              </a>
-
-              <span v-else class="profile-order__row-value"> — </span>
-            </div>
-          </div>
-        </section>
       </div>
 
-      <section class="profile-order__total">
-        <span class="profile-order__total-label">
-          {{ $t('Order total') }}
-        </span>
+      <div class="order-view__top">
+        <button type="button" class="order-view__back" @click="goBack">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M14 6L8 12L14 18"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
 
-        <strong class="profile-order__total-value">
-          {{ formattedAmount }}
-          {{ orderCurrency }}
-        </strong>
-      </section>
+          {{ $t('Back to orders') }}
+        </button>
+
+        <BaseButton
+          variant="bordered"
+          class="order-view__invoice"
+          :disabled="isInvoiceLoading"
+          @click="downloadInvoice"
+        >
+          {{ isInvoiceLoading ? $t('Downloading...') : $t('Download invoice') }}
+        </BaseButton>
+      </div>
+
+      <div class="order-view__products">
+        <article v-for="item in orderItems" :key="item.id" class="order-view__product">
+          <div class="order-view__product-main">
+            <RouterLink v-if="item.image" :to="`/products/${item.id}`" class="order-view__image">
+              <img :src="item.image" :alt="item.title" />
+            </RouterLink>
+
+            <div class="order-view__product-content">
+              <div class="order-view__product-header">
+                <div class="order-view__product-info">
+                  <div class="order-view__product-title">
+                    {{ item.title }}
+                  </div>
+
+                  <div v-if="item.platform || item.region" class="order-view__product-meta">
+                    <template v-if="item.platform">
+                      {{ item.platform }}
+                    </template>
+
+                    <template v-if="item.platform && item.region"> · </template>
+
+                    <template v-if="item.region">
+                      {{ item.region }}
+                    </template>
+                  </div>
+                </div>
+
+                <PriceFormatter
+                  :price="item.price"
+                  size="size-24"
+                  class="order-view__product-price"
+                />
+              </div>
+
+              <div v-for="key in getKeys(item)" :key="key" class="order-view__key">
+                <div class="order-view__key-label">
+                  {{ $t('Key') }}
+                </div>
+
+                <div class="order-view__key-value">
+                  {{ key }}
+                </div>
+
+                <BaseButton variant="bordered" class="order-view__copy" @click="copyKey(key)">
+                  {{ copiedKey === key ? $t('Copied') : $t('Copy') }}
+                </BaseButton>
+              </div>
+
+              <div v-if="getKeys(item).length" class="order-view__help">
+                <button type="button" class="order-view__help-link" @click="goToContact(item)">
+                  {{ $t("Key doesn't work?") }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <button type="button" class="order-view__mobile-back" @click="goBack">
+        {{ $t('Back to orders') }}
+      </button>
     </template>
 
-    <div v-else class="profile-order__not-found">
-      <h2 class="profile-order__not-found-title">
+    <div v-else class="order-view__empty">
+      <h2 class="order-view__empty-title">
         {{ $t('Order not found') }}
       </h2>
 
-      <p class="profile-order__not-found-text">
-        {{ $t('The requested order could not be found in your order history.') }}
-      </p>
-
-      <BaseButton
-        to="/profile/orders"
-        variant="dark-secondary"
-        class="profile-order__not-found-button"
-      >
+      <BaseButton variant="dark-secondary" @click="goBack">
         {{ $t('Back to orders') }}
       </BaseButton>
     </div>
@@ -376,32 +326,17 @@ onMounted(loadOrder)
 @use '@/assets/styles/media' as *;
 @use '@/assets/styles/classes' as *;
 
-.profile-order {
+.order-view {
   width: 100%;
   min-width: 0;
 
-  &__header {
-    width: 100%;
-
-    display: flex;
-    align-items: center;
-
-    @include adaptiveValue('margin-bottom', 20, 14);
-  }
-
-  &__back {
-    width: fit-content;
-    min-width: 0;
-  }
-
   &__loading {
     width: 100%;
+    min-height: 300px;
 
     display: flex;
     align-items: center;
     justify-content: center;
-
-    @include adaptiveValue('min-height', 360, 240);
   }
 
   &__spinner {
@@ -412,275 +347,238 @@ onMounted(loadOrder)
     border-top-color: var(--hint-primary-color);
     border-radius: 50%;
 
-    animation: profile-order-spin 0.7s linear infinite;
+    animation: order-spin 0.7s linear infinite;
   }
 
-  &__summary {
+  &__mobile-summary {
+    display: none;
+  }
+
+  &__top {
     width: 100%;
-    min-width: 0;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    border: 2px solid var(--border-primary-color);
-    background-color: var(--bg-secondary-color);
-
-    @include adaptiveValue('gap', 32, 18);
-    @include adaptiveValue('padding', 30, 20);
-    @include adaptiveValue('border-radius', 14, 12);
-    @include adaptiveValue('margin-bottom', 20, 14);
+    gap: 24px;
+    margin-bottom: 24px;
   }
 
-  &__summary-main {
-    min-width: 0;
-  }
-
-  &__eyebrow {
-    color: var(--seconday-color);
-
-    font-weight: 700;
-    text-transform: uppercase;
-
-    @include adaptiveValue('font-size', 11, 9);
-    @include adaptiveValue('line-height', 16, 14);
-    @include adaptiveValue('letter-spacing', 1.6, 1.3);
-    @include adaptiveValue('margin-bottom', 7, 5);
-  }
-
-  &__title {
-    margin: 0;
-
-    color: var(--primary-color);
-
-    font-family: var(--font-gabarito);
-    font-weight: 900;
-    line-height: 1;
-
-    @include adaptiveValue('font-size', 32, 25);
-    @include adaptiveValue('margin-bottom', 8, 6);
-  }
-
-  &__summary-meta {
-    color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 13, 12);
-    @include adaptiveValue('line-height', 19, 17);
-  }
-
-  &__summary-side {
-    flex: 0 0 auto;
-
-    display: flex;
-    align-items: flex-end;
-    flex-direction: column;
-
-    @include adaptiveValue('gap', 12, 8);
-  }
-
-  &__summary-total {
-    color: var(--primary-color);
-
-    font-family: var(--font-gabarito);
-    font-weight: 900;
-    line-height: 1;
-
-    white-space: nowrap;
-
-    @include adaptiveValue('font-size', 26, 22);
-  }
-
-  &__status {
-    width: fit-content;
-
+  &__back {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
 
-    border-radius: 6px;
+    gap: 10px;
 
-    font-weight: 700;
-    text-transform: uppercase;
-    white-space: nowrap;
+    padding: 0;
 
-    @include adaptiveValue('padding-top', 6, 5);
-    @include adaptiveValue('padding-right', 9, 7);
-    @include adaptiveValue('padding-bottom', 6, 5);
-    @include adaptiveValue('padding-left', 9, 7);
+    background: transparent;
 
-    @include adaptiveValue('font-size', 10, 9);
-    @include adaptiveValue('line-height', 14, 13);
-    @include adaptiveValue('letter-spacing', 1.2, 1);
+    color: var(--hint-primary-color);
 
-    &_success {
-      color: var(--hint-primary-color);
-      background-color: var(--bg-primary-color);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+
+    transition: opacity 0.3s ease;
+
+    svg {
+      width: 15px;
+      height: 15px;
+
+      flex: 0 0 auto;
     }
 
-    &_refunded {
-      color: var(--seconday-color);
-      background-color: var(--bg-third-color);
+    @media (any-hover: hover) {
+      &:hover {
+        opacity: 0.7;
+      }
     }
+  }
 
-    &_pending {
-      color: var(--primary-color);
-      background-color: var(--bg-third-color);
-    }
-
-    &_error {
-      color: var(--error-color, #d92d20);
-      background-color: rgba(217, 45, 32, 0.08);
-    }
-
-    &_default {
-      color: var(--seconday-color);
-      background-color: var(--bg-third-color);
-    }
+  &__invoice {
+    width: fit-content;
+    min-width: 0;
   }
 
   &__products {
     width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 24px;
+  }
+
+  &__product {
+    width: 100%;
     min-width: 0;
 
     border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
     background-color: var(--bg-secondary-color);
 
-    @include adaptiveValue('padding', 28, 18);
-    @include adaptiveValue('border-radius', 14, 12);
-    @include adaptiveValue('margin-bottom', 20, 14);
+    padding: 28px 32px;
   }
 
-  &__section-heading {
+  &__product-main {
     width: 100%;
+    min-width: 0;
+
+    display: flex;
+    align-items: flex-start;
+
+    gap: 28px;
+  }
+
+  &__image {
+    width: 180px;
+    height: 135px;
+
+    flex: 0 0 auto;
+
+    display: block;
+
+    overflow: hidden;
+
+    border-radius: 10px;
+
+    img {
+      width: 100%;
+      height: 100%;
+
+      display: block;
+
+      object-fit: cover;
+    }
+  }
+
+  &__product-content {
+    flex: 1 1 auto;
+
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+  }
+
+  &__product-header {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 24px;
+  }
+
+  &__product-info {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+  }
+
+  &__product-title {
+    color: var(--primary-color);
+
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.25;
+
+    text-wrap: pretty;
+  }
+
+  &__product-meta {
+    color: var(--seconday-color);
+
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  &__product-price {
+    flex: 0 0 auto;
+  }
+
+  &__key {
+    width: 100%;
+    min-width: 0;
 
     display: flex;
     align-items: center;
-    justify-content: space-between;
 
-    @include adaptiveValue('gap', 16, 10);
-    @include adaptiveValue('margin-bottom', 22, 16);
+    gap: 14px;
+
+    padding: 16px 20px;
+
+    border: 2px solid var(--hint-primary-color);
+    border-radius: 10px;
+
+    background-color: var(--bg-primary-color);
   }
 
-  &__section-title,
-  &__card-title {
-    margin: 0;
-
-    color: var(--primary-color);
-
-    font-family: var(--font-gabarito);
-    font-weight: 700;
-    line-height: 1.2;
-
-    @include adaptiveValue('font-size', 22, 19);
-  }
-
-  &__products-count {
+  &__key-label {
     flex: 0 0 auto;
 
     color: var(--seconday-color);
 
-    @include adaptiveValue('font-size', 12, 11);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
-  &__products-list {
-    width: 100%;
-    min-width: 0;
+  &__key-value {
+    flex: 1 1 auto;
 
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    @include adaptiveValue('gap', 14, 10);
-  }
-
-  &__products-empty {
-    color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 14, 13);
-    @include adaptiveValue('line-height', 21, 19);
-  }
-
-  &__details-grid {
-    width: 100%;
-    min-width: 0;
-
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    @include adaptiveValue('gap', 20, 14);
-    @include adaptiveValue('margin-bottom', 20, 14);
-  }
-
-  &__card {
-    min-width: 0;
-
-    border: 2px solid var(--border-primary-color);
-    background-color: var(--bg-secondary-color);
-
-    @include adaptiveValue('padding', 28, 18);
-    @include adaptiveValue('border-radius', 14, 12);
-  }
-
-  &__card-title {
-    @include adaptiveValue('margin-bottom', 22, 16);
-  }
-
-  &__rows {
-    width: 100%;
-
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__row {
-    width: 100%;
-    min-width: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    border-bottom: 1px solid var(--border-primary-color);
-
-    @include adaptiveValue('gap', 20, 12);
-    @include adaptiveValue('padding-top', 13, 11);
-    @include adaptiveValue('padding-bottom', 13, 11);
-
-    &:first-child {
-      padding-top: 0;
-    }
-
-    &:last-child {
-      padding-bottom: 0;
-
-      border-bottom: 0;
-    }
-  }
-
-  &__row-label {
-    flex: 0 1 auto;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('font-size', 13, 12);
-    @include adaptiveValue('line-height', 19, 17);
-  }
-
-  &__row-value {
     min-width: 0;
 
     color: var(--primary-color);
 
-    font-weight: 600;
-    text-align: right;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: 0.16em;
+
+    font-variant-numeric: tabular-nums;
 
     overflow-wrap: anywhere;
-
-    @include adaptiveValue('font-size', 14, 13);
-    @include adaptiveValue('line-height', 20, 18);
   }
 
-  &__email {
+  &__copy {
+    flex: 0 0 auto;
+
+    width: fit-content;
+    min-width: 74px;
+  }
+
+  &__help {
+    display: flex;
+    align-items: center;
+
+    gap: 20px;
+
+    min-height: 18px;
+  }
+
+  &__help-link {
+    padding: 0;
+
+    background: transparent;
+
     color: var(--hint-primary-color);
+
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 18px;
 
     transition: opacity 0.3s ease;
 
@@ -691,131 +589,231 @@ onMounted(loadOrder)
     }
   }
 
-  &__total {
-    width: 100%;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    border: 2px solid var(--border-primary-color);
-    background-color: var(--bg-secondary-color);
-
-    @include adaptiveValue('gap', 20, 12);
-    @include adaptiveValue('padding-top', 24, 18);
-    @include adaptiveValue('padding-right', 28, 18);
-    @include adaptiveValue('padding-bottom', 24, 18);
-    @include adaptiveValue('padding-left', 28, 18);
-    @include adaptiveValue('border-radius', 14, 12);
+  &__mobile-back {
+    display: none;
   }
 
-  &__total-label {
-    color: var(--primary-color);
-
-    font-family: var(--font-gabarito);
-    font-weight: 700;
-
-    @include adaptiveValue('font-size', 18, 16);
-  }
-
-  &__total-value {
-    color: var(--hint-primary-color);
-
-    font-family: var(--font-gabarito);
-    font-weight: 900;
-
-    white-space: nowrap;
-
-    @include adaptiveValue('font-size', 24, 21);
-  }
-
-  &__not-found {
+  &__empty {
     width: 100%;
 
     display: flex;
     align-items: center;
     flex-direction: column;
 
-    margin-left: auto;
-    margin-right: auto;
+    gap: 20px;
+
+    padding: 50px 20px;
 
     border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
     background-color: var(--bg-secondary-color);
-
-    text-align: center;
-
-    @include adaptiveValue('max-width', 560, 340);
-    @include adaptiveValue('padding', 48, 26);
-    @include adaptiveValue('border-radius', 14, 12);
   }
 
-  &__not-found-title {
-    margin-top: 0;
+  &__empty-title {
+    margin: 0;
 
     color: var(--primary-color);
 
     font-family: var(--font-gabarito);
+    font-size: 26px;
     font-weight: 700;
-
-    @include adaptiveValue('font-size', 26, 22);
-    @include adaptiveValue('margin-bottom', 10, 8);
   }
 
-  &__not-found-text {
-    margin-top: 0;
-
-    color: var(--seconday-color);
-
-    @include adaptiveValue('max-width', 400, 290);
-    @include adaptiveValue('font-size', 14, 13);
-    @include adaptiveValue('line-height', 22, 20);
-    @include adaptiveValue('margin-bottom', 22, 18);
-  }
-
-  &__not-found-button {
-    width: fit-content;
-  }
-
-  @media (max-width: $md4) {
-    &__details-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: $md6) {
-    &__summary {
-      align-items: flex-start;
+  @media (max-width: $md5) {
+    &__mobile-summary {
+      display: flex;
       flex-direction: column;
+
+      gap: 12px;
+
+      margin-bottom: 16px;
+      padding: 18px 20px;
+
+      border: 2px solid var(--border-primary-color);
+      border-radius: 14px;
+
+      background-color: var(--bg-secondary-color);
     }
 
-    &__summary-side {
+    &__summary-row {
       width: 100%;
 
-      align-items: center;
+      display: flex;
+      align-items: baseline;
       justify-content: space-between;
-      flex-direction: row;
+
+      gap: 16px;
+
+      color: var(--seconday-color);
+
+      font-size: 12px;
+      line-height: 18px;
+
+      strong {
+        color: var(--primary-color);
+
+        font-size: 14px;
+        font-weight: 400;
+
+        text-align: right;
+      }
+
+      &_status {
+        .order-view__status {
+          color: var(--hint-primary-color);
+
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+      }
+
+      &_total {
+        align-items: flex-end;
+
+        color: var(--primary-color);
+
+        font-size: 13px;
+      }
     }
 
-    &__row {
-      align-items: flex-start;
+    &__summary-divider {
+      width: 100%;
+      height: 1px;
+
+      background-color: var(--border-primary-color);
+    }
+
+    &__top {
+      display: none;
+    }
+
+    &__products {
+      gap: 12px;
+    }
+
+    &__product {
+      padding: 16px 18px;
+    }
+
+    &__product-main {
+      display: block;
+    }
+
+    &__image {
+      width: 76px;
+      height: 57px;
+
+      float: left;
+
+      margin-right: 12px;
+      margin-bottom: 14px;
+
+      border-radius: 8px;
+    }
+
+    &__product-content {
+      display: block;
+    }
+
+    &__product-header {
+      min-height: 57px;
+
+      display: block;
+
+      margin-bottom: 14px;
+    }
+
+    &__product-info {
+      display: block;
+    }
+
+    &__product-title {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    &__product-meta {
+      margin-top: 4px;
+
+      font-size: 11px;
+      line-height: 16px;
+    }
+
+    &__product-price {
+      display: block;
+
+      margin-top: 4px;
+    }
+
+    &__key {
+      clear: both;
+
+      display: flex;
+      align-items: stretch;
       flex-direction: column;
 
-      gap: 5px;
+      gap: 10px;
+
+      padding: 14px 16px;
+
+      &:not(:last-child) {
+        margin-bottom: 10px;
+      }
     }
 
-    &__row-value {
+    &__key-label {
+      font-size: 10px;
+      line-height: 14px;
+    }
+
+    &__key-value {
       width: 100%;
 
-      text-align: left;
+      font-size: 15px;
+      line-height: 21px;
+      letter-spacing: 0.14em;
     }
 
-    &__total {
-      align-items: flex-end;
+    &__copy {
+      width: 100%;
+    }
+
+    &__help {
+      clear: both;
+
+      margin-top: 12px;
+    }
+
+    &__help-link {
+      font-size: 12px;
+      line-height: 17px;
+    }
+
+    &__mobile-back {
+      width: 100%;
+
+      display: block;
+
+      margin-top: 18px;
+      padding: 6px 0 0;
+
+      background: transparent;
+
+      color: var(--hint-primary-color);
+
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 18px;
+      text-align: center;
     }
   }
 }
 
-@keyframes profile-order-spin {
+@keyframes order-spin {
   to {
     transform: rotate(360deg);
   }
