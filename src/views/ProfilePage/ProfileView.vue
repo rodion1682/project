@@ -1,5 +1,5 @@
 <script setup>
-import { computed, toRefs } from 'vue'
+import { computed, ref, toRefs } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import BalanceView from './components/BalanceView.vue'
@@ -10,6 +10,7 @@ import OverviewView from './components/OverviewView.vue'
 
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
 
+import PriceFormatter from '@/components/ui/PriceFormatter.vue'
 import { useLogoutStore } from '@/stores/logout'
 import { useProfileStore } from '@/stores/profile'
 
@@ -30,6 +31,12 @@ const { t } = useI18n()
 
 const logoutStore = useLogoutStore()
 const profileStore = useProfileStore()
+
+const activeOrder = ref(null)
+
+const handleOrderLoaded = (order) => {
+  activeOrder.value = order
+}
 
 const profileNav = computed(() => [
   {
@@ -54,7 +61,31 @@ const profileNav = computed(() => [
   },
 ])
 
+const isOrderDetails = computed(() => {
+  return page.value === 'orders' && Boolean(props.order)
+})
+
 const breadcrumbs = computed(() => {
+  if (isOrderDetails.value) {
+    return [
+      {
+        title: t('Home'),
+        link: '/',
+      },
+      {
+        title: t('My profile'),
+        link: '/profile/overview',
+      },
+      {
+        title: t('Orders'),
+        link: '/profile/orders',
+      },
+      {
+        title: `#${props.order}`,
+      },
+    ]
+  }
+
   const currentItem = profileNav.value.find((item) => item.link === page.value)
 
   return [
@@ -74,7 +105,6 @@ const breadcrumbs = computed(() => {
       : []),
   ]
 })
-
 const fullName = computed(() => {
   const name = profileStore.profile?.name || ''
   const surname = profileStore.profile?.surname || ''
@@ -91,6 +121,40 @@ const initials = computed(() => {
   return value || 'U'
 })
 
+const paymentMethod = computed(() => {
+  const currentOrder = activeOrder.value
+
+  if (!currentOrder) {
+    return ''
+  }
+
+  return (
+    currentOrder.payment_method ||
+    currentOrder.paymentMethod ||
+    currentOrder.payment_type ||
+    currentOrder.paymentType ||
+    ''
+  )
+})
+
+const formatDate = (value) => {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+
+  return `${day}.${month}.${year}`
+}
+
 const getNavLink = (item) => {
   if (item.route) {
     return item.route
@@ -106,12 +170,45 @@ const getNavLink = (item) => {
       <Breadcrumbs :items="breadcrumbs" class="profile-page__breadcrumbs" />
 
       <h1 class="profile-page__title">
-        {{ $t('My profile') }}
+        <template v-if="page === 'overview'"> {{ $t('My profile') }}</template>
+        <template v-if="page === 'balance'"> {{ $t('Balance') }}</template>
+        <template v-if="page === 'orders'"> {{ $t('My orders') }}</template>
+        <template v-if="page === 'change-password'"> {{ $t('Change password') }}</template>
+        <template v-if="page === 'orders' && order"> #{{ activeOrder.order_nr }}</template>
       </h1>
 
       <div class="profile-page__layout">
         <aside class="profile-page__sidebar">
-          <div class="profile-page__user">
+          <template v-if="isOrderDetails">
+            <div v-if="activeOrder" class="profile-page__order-summary">
+              <div class="profile-page__order-row">
+                <span>{{ $t('Order date') }}:</span>
+                <strong>{{ formatDate(activeOrder.created_at) }}</strong>
+              </div>
+
+              <div v-if="paymentMethod" class="profile-page__order-row">
+                <span>{{ $t('Paid with') }}:</span>
+                <strong>{{ $t(paymentMethod) }}</strong>
+              </div>
+
+              <div v-if="activeOrder.status" class="profile-page__order-row">
+                <span>{{ $t('Status') }}:</span>
+                <strong class="profile-page__order-status">
+                  {{ $t(activeOrder.status) }}
+                </strong>
+              </div>
+
+              <div class="profile-page__order-divider"></div>
+
+              <div class="profile-page__order-row profile-page__order-row_total">
+                <span>{{ $t('Order total') }}:</span>
+
+                <PriceFormatter :price="activeOrder.amount" size="size-24" />
+              </div>
+            </div>
+          </template>
+
+          <div class="profile-page__user" :class="{ hide: isOrderDetails }">
             <div class="profile-page__avatar">
               {{ initials }}
             </div>
@@ -148,7 +245,7 @@ const getNavLink = (item) => {
           </nav>
         </aside>
 
-        <div class="profile-page__mobile-nav">
+        <div v-if="!isOrderDetails" class="profile-page__mobile-nav">
           <RouterLink
             v-for="item in profileNav"
             :key="item.link || item.route"
@@ -174,7 +271,11 @@ const getNavLink = (item) => {
 
           <OrdersView v-else-if="page === 'orders' && !order" />
 
-          <OrderView v-else-if="page === 'orders' && order" :order="order" />
+          <OrderView
+            v-else-if="page === 'orders' && order"
+            :order="order"
+            @loaded="handleOrderLoaded"
+          />
 
           <BalanceView v-else-if="page === 'balance'" />
 
@@ -251,6 +352,79 @@ const getNavLink = (item) => {
       margin-bottom: 14px;
     }
   }
+  &__order-nr {
+    &:not(:last-child) {
+      @include adaptiveValue('margin-bottom', 40, 18);
+    }
+  }
+  &__order-summary {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 14px;
+
+    padding: 24px 26px;
+
+    border: 2px solid var(--border-primary-color);
+    border-radius: 14px;
+
+    background-color: var(--bg-secondary-color);
+    @media (max-width: $md8) {
+      @include hide-item;
+    }
+  }
+
+  &__order-row {
+    width: 100%;
+
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    color: var(--seconday-color);
+
+    font-size: 13px;
+    line-height: 18px;
+
+    strong {
+      color: var(--primary-color);
+
+      font-size: 14px;
+      font-weight: 400;
+
+      text-align: right;
+    }
+
+    &_total {
+      align-items: flex-end;
+
+      color: var(--primary-color);
+
+      font-weight: 500;
+    }
+  }
+
+  &__order-status {
+    color: var(--hint-primary-color) !important;
+
+    font-size: 11px !important;
+    font-weight: 700 !important;
+
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  &__order-divider {
+    width: 100%;
+    height: 1px;
+
+    background-color: var(--border-primary-color);
+  }
 
   &__user {
     min-width: 0;
@@ -268,6 +442,11 @@ const getNavLink = (item) => {
     @include adaptiveValue('padding-right', 28, 20);
     @include adaptiveValue('padding-bottom', 26, 18);
     @include adaptiveValue('padding-left', 28, 20);
+    @media (max-width: $md8) {
+      &.hide {
+        @include hide-item;
+      }
+    }
   }
 
   &__avatar {

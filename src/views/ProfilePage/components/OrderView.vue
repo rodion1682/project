@@ -16,6 +16,8 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits(['loaded'])
+
 const router = useRouter()
 const profileStore = useProfileStore()
 
@@ -128,6 +130,8 @@ const loadOrder = async () => {
     const orders = await profileStore.getOrderHistory()
 
     activeOrder.value = orders.find((item) => String(item.order_nr) === String(props.order)) || null
+
+    emit('loaded', activeOrder.value)
 
     if (!activeOrder.value) {
       error.value = 'Order not found'
